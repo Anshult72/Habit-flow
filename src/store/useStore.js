@@ -44,10 +44,37 @@ const useStore = create(
       
       xp: 0,
       level: 1,
+      achievements: [], // list of unlocked achievement IDs
+      
       addXP: (amount) => set((state) => {
-        const newXP = state.xp + amount;
+        const newXP = Math.max(0, state.xp + amount);
         const newLevel = Math.floor(newXP / 100) + 1;
-        return { xp: newXP, level: newLevel };
+        
+        // Auto-check for achievements
+        const newlyUnlocked = [];
+        const possible = [
+          { id: 'level-5', condition: newLevel >= 5 },
+          { id: 'level-10', condition: newLevel >= 10 },
+          { id: 'xp-500', condition: newXP >= 500 },
+          { id: 'xp-1000', condition: newXP >= 1000 },
+        ];
+        
+        possible.forEach(p => {
+          if (p.condition && !state.achievements.includes(p.id)) {
+            newlyUnlocked.push(p.id);
+          }
+        });
+
+        if (newlyUnlocked.length > 0) {
+          // In a real app we'd trigger a toast here, but we can't easily from store
+          // unless we use a callback or the component listens to this state
+        }
+
+        return { 
+          xp: newXP, 
+          level: newLevel,
+          achievements: [...state.achievements, ...newlyUnlocked]
+        };
       }),
 
       notes: {}, // { 'YYYY-MM-DD': 'Note content' }
@@ -60,7 +87,6 @@ const useStore = create(
         screenTime: { ...state.screenTime, [dateStr]: hours }
       })),
 
-      achievements: [], // list of unlocked achievement IDs
       unlockAchievement: (id) => set((state) => {
         if (!state.achievements.includes(id)) {
           return { achievements: [...state.achievements, id] };

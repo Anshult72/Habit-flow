@@ -7,6 +7,7 @@ import {
   StickyNote, ShoppingCart, Heart, BookOpen, Dumbbell,
   ArrowLeft, ListTodo, Plus
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const FEATURES = [
   { id: 'task', label: 'Task', icon: CheckCircle2, desc: 'Manage objectives' },
@@ -60,6 +61,10 @@ export default function Onboarding() {
     localStorage.setItem('userFeatures', JSON.stringify(selectedFeatures));
     localStorage.setItem('userLists', JSON.stringify(selectedLists));
     localStorage.setItem('hasCompletedOnboarding', 'true');
+    toast.success('System initialized. Welcome to HabitFlow.', {
+      duration: 4000,
+      icon: '🚀',
+    });
     navigate('/app');
   };
 

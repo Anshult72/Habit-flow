@@ -17,6 +17,15 @@ import PWAInstallButton from './components/PWAInstallButton';
 import PremiumPage from './pages/PremiumPage';
 import FeaturesPage from './pages/FeaturesPage';
 import Onboarding from './pages/Onboarding';
+import AchievementNotifier from './components/AchievementNotifier';
+
+function OnboardingCheck({ children }) {
+  const hasCompleted = localStorage.getItem('hasCompletedOnboarding') === 'true';
+  if (!hasCompleted) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  return children;
+}
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -29,7 +38,11 @@ function AnimatedRoutes() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/premium" element={<PremiumPage />} />
         <Route path="/help" element={<HelpCenter />} />
-        <Route path="/app" element={<DashboardLayout />}>
+        <Route path="/app" element={
+          <OnboardingCheck>
+            <DashboardLayout />
+          </OnboardingCheck>
+        }>
           <Route index element={<Dashboard />} />
           <Route path="habits" element={<Habits />} />
           <Route path="analytics" element={<Analytics />} />
@@ -74,6 +87,7 @@ function App() {
         </motion.div>
         <AnimatedRoutes />
         <PWAInstallButton />
+        <AchievementNotifier />
       </SceneWrapper>
     </Router>
   );

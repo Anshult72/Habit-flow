@@ -159,7 +159,7 @@ export default function Landing() {
                   className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-5"
                 >
                   <button 
-                    onClick={() => navigate('/app')}
+                    onClick={() => navigate('/onboarding')}
                     className="shine-sweep group relative flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-[#FF6B2C] to-[#E85D04] text-white font-bold text-lg shadow-[0_0_30px_rgba(255,107,44,0.3)] hover:shadow-[0_0_50px_rgba(255,107,44,0.6)] hover:-translate-y-1 transition-all duration-300 active:scale-95"
                   >
                     Start Tracking Now
