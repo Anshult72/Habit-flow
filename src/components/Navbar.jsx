@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, ChevronDown, LayoutDashboard, ListChecks, 
   Calendar as CalendarIcon, BarChart3, Sparkles, ArrowRight,
-  Settings, Award, FileText
+  Settings, Award, FileText, Trophy
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -58,6 +58,13 @@ export default function Navbar() {
       icon: Award, 
       desc: 'Trophies and milestones',
       color: '#FF6B2C'
+    },
+    { 
+      label: 'Leaderboard', 
+      path: '/app/leaderboard', 
+      icon: Trophy, 
+      desc: 'Global productivity rankings',
+      color: '#E85D04'
     },
     { 
       label: 'Settings', 

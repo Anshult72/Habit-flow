@@ -18,6 +18,7 @@ import PremiumPage from './pages/PremiumPage';
 import FeaturesPage from './pages/FeaturesPage';
 import Onboarding from './pages/Onboarding';
 import AchievementNotifier from './components/AchievementNotifier';
+import LeaderboardPage from './pages/LeaderboardPage';
 
 function OnboardingCheck({ children }) {
   const hasCompleted = localStorage.getItem('hasCompletedOnboarding') === 'true';
@@ -49,6 +50,7 @@ function AnimatedRoutes() {
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="achievements" element={<Achievements />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="leaderboard" element={<LeaderboardPage />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
