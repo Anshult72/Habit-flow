@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, ListChecks, Calendar, BarChart3, 
-  Trophy, Settings, Shield, Award 
+  Trophy, Settings, Shield, Award, Rocket, Sparkles, Zap
 } from 'lucide-react';
 import useStore from '../store/useStore';
 
@@ -14,9 +14,9 @@ export default function MobileDock() {
   const dockItems = [
     { icon: LayoutDashboard, path: '/app', label: 'Home' },
     { icon: ListChecks, path: '/app/habits', label: 'Habits' },
-    { icon: Trophy, path: '/app/leaderboard', label: 'Ranks' },
-    { icon: BarChart3, path: '/app/analytics', label: 'Stats' },
-    { icon: Settings, path: '/app/settings', label: 'Setup' },
+    { icon: Rocket, path: '/tracker/mission-countdown', label: 'Missions' },
+    { icon: Zap, path: '/tracker/focus-zone', label: 'Focus' },
+    { icon: Sparkles, path: '/tracker/matrix', label: 'Matrix' },
   ];
 
   const isActive = (path) => location.pathname === path;

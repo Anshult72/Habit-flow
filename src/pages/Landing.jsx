@@ -1,97 +1,100 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Play, Sparkles, Activity, Zap, Shield, CheckCircle2, TrendingUp, Users, Globe, Award } from 'lucide-react';
+import { ArrowRight, Play, Sparkles, Activity, Zap, Shield, CheckCircle2, TrendingUp, Users, Globe, Award, LayoutGrid, Rocket } from 'lucide-react';
+const WORDS = [
+  'Consistency',
+  'Discipline',
+  'Focus',
+  'Momentum',
+  'Clarity',
+  'Growth',
+  'Mastery'
+];
 
+function WordTransition() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % WORDS.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.span
+        key={WORDS[index]}
+        initial={{ y: '100%', opacity: 0 }}
+        animate={{ y: '0%', opacity: 1 }}
+        exit={{ y: '-100%', opacity: 0 }}
+        transition={{
+          duration: 0.8,
+          ease: [0.16, 1, 0.3, 1]
+        }}
+        className="absolute inset-0 flex items-center justify-center md:justify-start text-transparent bg-clip-text"
+        style={{ backgroundImage: 'linear-gradient(90deg, #FF6B2C, #FF8C42, #FFB347)' }}
+      >
+        {WORDS[index]}
+      </motion.span>
+    </AnimatePresence>
+  );
+}
 function HeroTypingAnimation() {
   const line1 = "Master Your";
   const line2 = "Daily Flow";
   
-  const [typedLine1, setTypedLine1] = useState("");
-  const [typedLine2, setTypedLine2] = useState("");
-  const [phase, setPhase] = useState(0); 
+  const [text1, setText1] = useState("");
+  const [text2, setText2] = useState("");
+  const [isLine1Done, setIsLine1Done] = useState(false);
+  const [isLine2Done, setIsLine2Done] = useState(false);
 
   useEffect(() => {
     let timeout;
-    
-    if (phase === 0) {
-      timeout = setTimeout(() => setPhase(1), 500); 
-    } else if (phase === 1) {
-      if (typedLine1.length < line1.length) {
-        timeout = setTimeout(() => {
-          setTypedLine1(line1.slice(0, typedLine1.length + 1));
-        }, 70 + Math.random() * 50);
-      } else {
-        timeout = setTimeout(() => setPhase(2), 400); 
-      }
-    } else if (phase === 2) {
-      setPhase(3);
-    } else if (phase === 3) {
-      if (typedLine2.length < line2.length) {
-        timeout = setTimeout(() => {
-          setTypedLine2(line2.slice(0, typedLine2.length + 1));
-        }, 70 + Math.random() * 50);
-      } else {
-        setPhase(4);
-      }
-    } else if (phase === 4) {
-      // Disappear cursor 2 seconds after completion
-      timeout = setTimeout(() => setPhase(5), 2000);
+    if (text1.length < line1.length) {
+      timeout = setTimeout(() => {
+        setText1(line1.slice(0, text1.length + 1));
+      }, 80);
+    } else {
+      timeout = setTimeout(() => setIsLine1Done(true), 500);
     }
-
     return () => clearTimeout(timeout);
-  }, [phase, typedLine1, typedLine2]);
+  }, [text1]);
+
+  useEffect(() => {
+    if (!isLine1Done) return;
+    let timeout;
+    if (text2.length < line2.length) {
+      timeout = setTimeout(() => {
+        setText2(line2.slice(0, text2.length + 1));
+      }, 100);
+    } else {
+      setIsLine2Done(true);
+    }
+    return () => clearTimeout(timeout);
+  }, [text2, isLine1Done]);
 
   return (
-    <div className="flex flex-col items-center lg:items-start text-6xl md:text-8xl font-display font-bold text-white tracking-tight mb-8">
-      
-      {/* Line 1 */}
-      <div className="relative flex items-center h-[1.1em] overflow-visible">
-        <div className="flex">
-          {typedLine1.split('').map((char, i) => (
-            <motion.span
-              key={`l1-${i}`}
-              initial={{ opacity: 0, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, filter: 'blur(0px)' }}
-              transition={{ duration: 0.3 }}
-            >
-              {char === ' ' ? '\u00A0' : char}
-            </motion.span>
-          ))}
-        </div>
-        {/* Cursor for Line 1 */}
-        {phase === 1 && (
-           <motion.span
-             animate={{ opacity: [1, 0] }}
-             transition={{ duration: 0.8, repeat: Infinity, ease: "steps(2)" }}
-             className="inline-block w-[4px] h-[0.8em] bg-[#FF6B2C] ml-2 shadow-[0_0_10px_#FF6B2C]"
-           />
+    <div className="flex flex-col items-center lg:items-start text-6xl md:text-8xl font-display font-bold text-white tracking-tighter mb-8 min-h-[2.4em]">
+      <div className="flex items-center h-[1.1em]">
+        <span>{text1}</span>
+        {!isLine1Done && (
+          <motion.span
+            animate={{ opacity: [1, 0] }}
+            transition={{ duration: 0.8, repeat: Infinity, ease: "steps(2)" }}
+            className="inline-block w-[4px] h-[0.8em] bg-[#FF6B2C] ml-2 shadow-[0_0_15px_#FF6B2C]"
+          />
         )}
       </div>
-
-      {/* Line 2 */}
-      <div className="relative flex items-center h-[1.1em] overflow-visible mt-2">
-        {phase >= 2 && (
-          <div className="flex text-[#FF8C42] drop-shadow-[0_0_20px_rgba(255,140,66,0.4)]">
-            {typedLine2.split('').map((char, i) => (
-              <motion.span
-                key={`l2-${i}`}
-                initial={{ opacity: 0, filter: 'blur(8px)' }}
-                animate={{ opacity: 1, filter: 'blur(0px)' }}
-                transition={{ duration: 0.3 }}
-              >
-                {char === ' ' ? '\u00A0' : char}
-              </motion.span>
-            ))}
-          </div>
-        )}
-        {/* Cursor for Line 2 */}
-        {(phase >= 2 && phase < 5) && (
-           <motion.span
-             animate={{ opacity: [1, 0] }}
-             transition={{ duration: 0.8, repeat: Infinity, ease: "steps(2)" }}
-             className="inline-block w-[4px] h-[0.8em] bg-[#FF6B2C] ml-2 shadow-[0_0_10px_#FF6B2C]"
-           />
+      <div className="flex items-center h-[1.1em] text-[#FF8C42] drop-shadow-[0_0_20px_rgba(255,140,66,0.3)]">
+        <span>{text2}</span>
+        {isLine1Done && !isLine2Done && (
+          <motion.span
+            animate={{ opacity: [1, 0] }}
+            transition={{ duration: 0.8, repeat: Infinity, ease: "steps(2)" }}
+            className="inline-block w-[4px] h-[0.8em] bg-[#FF6B2C] ml-2 shadow-[0_0_15px_#FF6B2C]"
+          />
         )}
       </div>
     </div>
@@ -297,6 +300,51 @@ export default function Landing() {
                   <div className="text-sm text-textMuted font-medium uppercase tracking-widest">{stat.label}</div>
                 </motion.div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Features Preview Section with Word Transition */}
+        <section className="relative py-32 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
+            <div className="flex flex-col items-center text-center">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#FF6B2C]/15 bg-[#050505]/40 text-[#FF8C42]/70 mb-8 backdrop-blur-xl"
+              >
+                <Sparkles size={14} className="text-[#FF6B2C]/60" />
+                <span className="text-xs font-medium tracking-[0.15em] uppercase">Core Capabilities</span>
+              </motion.div>
+              
+              <h2 className="text-4xl md:text-7xl font-display font-bold text-white tracking-tight mb-12">
+                Elevate your productivity <br />
+                <div className="h-[1.2em] relative overflow-hidden inline-block min-w-[280px] md:min-w-[420px] align-bottom">
+                  <WordTransition />
+                </div>
+              </h2>
+              
+              <p className="text-xl text-textMuted max-w-2xl font-light mb-20 leading-relaxed">
+                Experience a unified operating system for your life. Every feature is designed 
+                with a cinematic focus to keep you engaged and consistent.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+                {[
+                  { title: 'Strategic Matrix', desc: 'Prioritize tasks with our 2x2 Eisenhower system.', icon: LayoutGrid },
+                  { title: 'Goal Missions', desc: 'Set long-term life milestones with live countdowns.', icon: Rocket },
+                  { title: 'Deep Focus Zone', desc: 'Immersive timers and analytics for peak flow.', icon: Zap }
+                ].map((f, i) => (
+                  <div key={i} className="glass-card p-10 rounded-[2.5rem] border-white/5 text-left hover:border-[#FF6B2C]/20 transition-all">
+                    <div className="w-14 h-14 rounded-2xl bg-[#FF6B2C]/10 flex items-center justify-center text-[#FF6B2C] mb-8">
+                      <f.icon size={28} />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-4">{f.title}</h3>
+                    <p className="text-textMuted leading-relaxed">{f.desc}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>

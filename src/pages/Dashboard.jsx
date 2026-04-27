@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, subDays } from 'date-fns';
-import { Trophy, Flame, Target, Zap, Sparkles, Shield, Brain, ArrowUpRight, CheckCircle2, ChevronRight, Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+import { Trophy, Flame, Target, Zap, Sparkles, Shield, Brain, ArrowUpRight, CheckCircle2, ChevronRight, Lock, Rocket } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Line } from 'react-chartjs-2';
 import toast from 'react-hot-toast';
@@ -9,8 +11,10 @@ import toast from 'react-hot-toast';
 export default function Dashboard() {
   const { 
     habits, completions, toggleCompletion, xp, level, 
-    streakShields, onboardingDay, useShield, advanceOnboarding, getStats 
+    streakShields, onboardingDay, useShield, advanceOnboarding, getStats,
+    matrixTasks, missions
   } = useStore();
+  const navigate = useNavigate();
   
   const [today] = useState(new Date());
   const [dailyFocus, setDailyFocus] = useState(localStorage.getItem('dailyFocus') || '');
@@ -225,6 +229,65 @@ export default function Dashboard() {
               </div>
               <button className="w-full mt-6 py-3 rounded-xl border border-[#FF6B2C]/20 hover:bg-[#FF6B2C]/10 text-[10px] font-bold text-[#FF8C42] uppercase tracking-[0.2em] transition-all">View Intelligence Report</button>
             </div>
+          </motion.div>
+
+          {/* Matrix Overview Integration */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.55 }} className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden group border-white/5">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                <Target size={16} className="text-[#FF6B2C]" /> Matrix Strategy
+              </h3>
+              <button onClick={() => navigate('/app/matrix')} className="text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:underline">Full View</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { id: 1, label: 'Q1: DO', color: '#FF4D4D' },
+                { id: 2, label: 'Q2: PLAN', color: '#FFD700' },
+                { id: 3, label: 'Q3: DELEGATE', color: '#3B82F6' },
+                { id: 4, label: 'Q4: REMOVE', color: '#10B981' }
+              ].map(q => {
+                const count = useStore.getState().matrixTasks.filter(t => t.quadrant === q.id && !t.completed).length;
+                return (
+                  <div key={q.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: q.color, boxShadow: `0 0 8px ${q.color}` }} />
+                      <span className="text-[8px] font-black text-white/40 tracking-tighter">{q.label}</span>
+                    </div>
+                    <p className="text-lg font-bold text-white">{count}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Mission Countdown Integration */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.58 }} className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden group border-white/5">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                <Rocket size={16} className="text-[#FF6B2C]" /> Active Missions
+              </h3>
+              <button onClick={() => navigate('/app/mission-countdown')} className="text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:underline">All Missions</button>
+            </div>
+            {useStore.getState().missions.length > 0 ? (
+              <div className="space-y-4">
+                {useStore.getState().missions.slice(0, 1).map(mission => {
+                  const daysLeft = Math.max(0, Math.ceil((new Date(mission.targetDate) - new Date()) / (1000 * 60 * 60 * 24)));
+                  return (
+                    <div key={mission.id} className="space-y-3">
+                      <div className="flex justify-between items-end">
+                        <p className="text-white font-bold truncate pr-4">{mission.title}</p>
+                        <p className="text-[#FF8C42] font-black text-xl leading-none">{daysLeft}<span className="text-[10px] opacity-50 ml-1">Days</span></p>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#FF6B2C]" style={{ width: '65%' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-textMuted italic">No active missions initialized.</p>
+            )}
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden group border-white/5">

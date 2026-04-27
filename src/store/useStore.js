@@ -35,10 +35,88 @@ const useStore = create(
       // Achievements Logic
       achievements: [],
       
+      // Focus Zone System
+      focusSessions: [], // Array of { id, type, duration, date, xpEarned, rating }
+      focusStreak: 0,
+      totalFocusMinutes: 0,
+
+      // Mission Countdown System
+      missions: [], // Array of { id, title, desc, category, targetDate, priority, motivationQuote, linkedHabitIds, createdAt }
+
+      // Matrix System
+      matrixTasks: [], // Array of { id, title, desc, quadrant, completed, dueDate, tags }
+
       // Actions
       addHabit: (habit) => set((state) => ({ 
         habits: [...state.habits, { ...habit, difficulty: habit.difficulty || 'Medium' }] 
       })),
+
+      addMatrixTask: (task) => set((state) => ({
+        matrixTasks: [...state.matrixTasks, { 
+          id: crypto.randomUUID(), 
+          completed: false, 
+          ...task 
+        }]
+      })),
+
+      updateMatrixTask: (id, updatedTask) => set((state) => ({
+        matrixTasks: state.matrixTasks.map((t) => (t.id === id ? { ...t, ...updatedTask } : t)),
+      })),
+
+      deleteMatrixTask: (id) => set((state) => ({
+        matrixTasks: state.matrixTasks.filter((t) => t.id !== id),
+      })),
+
+      toggleMatrixTask: (id) => {
+        const task = get().matrixTasks.find(t => t.id === id);
+        if (!task) return;
+
+        const xpAmount = 50; // Flat XP for matrix tasks
+
+        set((state) => ({
+          matrixTasks: state.matrixTasks.map((t) => 
+            t.id === id ? { ...t, completed: !t.completed } : t
+          )
+        }));
+
+        if (!task.completed) {
+          get().addXP(xpAmount);
+        } else {
+          get().addXP(-xpAmount);
+        }
+      },
+
+      addMission: (mission) => set((state) => ({
+        missions: [...state.missions, { 
+          id: crypto.randomUUID(), 
+          createdAt: new Date().toISOString(),
+          linkedHabitIds: [],
+          ...mission 
+        }]
+      })),
+
+      updateMission: (id, updatedMission) => set((state) => ({
+        missions: state.missions.map((m) => (m.id === id ? { ...m, ...updatedMission } : m)),
+      })),
+
+      deleteMission: (id) => set((state) => ({
+        missions: state.missions.filter((m) => m.id !== id),
+      })),
+
+      addFocusSession: (session) => set((state) => {
+        const newSession = {
+          id: crypto.randomUUID(),
+          date: new Date().toISOString(),
+          ...session
+        };
+        const updatedTotal = state.totalFocusMinutes + session.duration;
+        get().addXP(session.xpEarned);
+        
+        return {
+          focusSessions: [newSession, ...state.focusSessions],
+          totalFocusMinutes: updatedTotal
+        };
+      }),
 
       updateHabit: (id, updatedHabit) => set((state) => ({
         habits: state.habits.map((h) => (h.id === id ? { ...h, ...updatedHabit } : h)),

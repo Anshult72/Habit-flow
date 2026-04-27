@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, ChevronDown, LayoutDashboard, ListChecks, 
   Calendar as CalendarIcon, BarChart3, Sparkles, ArrowRight,
-  Settings, Award, FileText, Trophy, Swords, Users
+  Settings, Award, FileText, Trophy, Swords, Users, Rocket
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -51,6 +51,27 @@ export default function Navbar() {
       icon: FileText, 
       desc: 'Weekly & monthly summaries',
       color: '#a855f7'
+    },
+    { 
+      label: 'Matrix', 
+      path: '/tracker/matrix', 
+      icon: Sparkles, 
+      desc: 'Eisenhower priority system',
+      color: '#FFB347'
+    },
+    { 
+      label: 'Missions', 
+      path: '/tracker/mission-countdown', 
+      icon: Rocket, 
+      desc: 'Long-term goal tracking',
+      color: '#FF6B2C'
+    },
+    { 
+      label: 'Focus Zone', 
+      path: '/tracker/focus-zone', 
+      icon: Zap, 
+      desc: 'Deep work command center',
+      color: '#E85D04'
     },
     { 
       label: 'Achievements', 

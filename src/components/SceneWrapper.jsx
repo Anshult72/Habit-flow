@@ -41,7 +41,7 @@ export default function SceneWrapper({ children }) {
 
       {/* Layer 4: Global Cursor Glow */}
       <motion.div
-        className="fixed top-0 left-0 w-[600px] h-[600px] z-[3] pointer-events-none mix-blend-screen"
+        className="fixed top-0 left-0 w-[800px] h-[800px] z-[9999] pointer-events-none mix-blend-screen overflow-visible"
         style={{
           x: smoothX,
           y: smoothY,
@@ -51,10 +51,11 @@ export default function SceneWrapper({ children }) {
       >
         <motion.div
           animate={{
-            scale: isIdle ? 0.8 : 1,
-            opacity: isIdle ? 0.08 : 0.18,
+            scale: isIdle ? 0.7 : 1,
+            opacity: isIdle ? 0.05 : 0.22,
           }}
-          className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(255,140,66,1)_0%,rgba(255,107,44,0.6)_40%,transparent_70%)] blur-[100px]"
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(255,107,44,0.8)_0%,rgba(255,107,44,0.3)_45%,transparent_75%)] blur-[120px]"
         />
       </motion.div>
 

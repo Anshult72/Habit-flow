@@ -19,6 +19,9 @@ import FeaturesPage from './pages/FeaturesPage';
 import Onboarding from './pages/Onboarding';
 import AchievementNotifier from './components/AchievementNotifier';
 import LeaderboardPage from './pages/LeaderboardPage';
+import EisenhowerMatrix from './pages/EisenhowerMatrix';
+import MissionCountdown from './pages/MissionCountdown';
+import FocusZone from './pages/FocusZone';
 import Duels from './pages/Duels';
 import Squads from './pages/Squads';
 
@@ -56,6 +59,16 @@ function AnimatedRoutes() {
           <Route path="duels" element={<Duels />} />
           <Route path="squads" element={<Squads />} />
           <Route path="settings" element={<Settings />} />
+        </Route>
+
+        <Route path="/tracker" element={
+          <OnboardingCheck>
+            <DashboardLayout />
+          </OnboardingCheck>
+        }>
+          <Route path="matrix" element={<EisenhowerMatrix />} />
+          <Route path="mission-countdown" element={<MissionCountdown />} />
+          <Route path="focus-zone" element={<FocusZone />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

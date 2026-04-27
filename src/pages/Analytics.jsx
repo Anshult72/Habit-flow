@@ -29,7 +29,10 @@ const TOOLTIP_STYLE = {
 };
 
 export default function Analytics() {
-  const { habits, completions, screenTime, selectedMonth, selectedYear, setSelectedMonth, setSelectedYear } = useStore();
+  const { 
+    habits, completions, screenTime, selectedMonth, selectedYear, 
+    setSelectedMonth, setSelectedYear, matrixTasks 
+  } = useStore();
   const [activeTab, setActiveTab] = useState('monthly');
 
   const now = new Date();
@@ -369,15 +372,24 @@ export default function Analytics() {
             )}
           </div>
         </div>
+
+        {/* Matrix Strategy Analytics Integration */}
         <div className="glass-card p-8 rounded-3xl border border-white/5 relative overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#FF8C42]/10 rounded-full blur-[100px] pointer-events-none" />
-          <h2 className="text-xl font-display font-bold text-white mb-8 text-center relative z-10">Consistency Web</h2>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#FF6B2C]/10 rounded-full blur-[100px] pointer-events-none" />
+          <h2 className="text-xl font-display font-bold text-white mb-8 text-center relative z-10">Strategic Priority Allocation</h2>
           <div className="h-64 flex justify-center relative z-10">
-            {Object.keys(categories).length > 0 ? (
-              <Radar data={radarData} options={{ ...chartBase, scales: { r: { angleLines: { color: 'rgba(255,255,255,0.05)' }, grid: { color: 'rgba(255,255,255,0.05)' }, pointLabels: { color: '#94A3B8', font: { size: 11 } }, ticks: { display: false } } }, plugins: { legend: { display: false }, tooltip: TOOLTIP_STYLE } }} />
-            ) : (
-              <div className="flex items-center text-textMuted">Insufficient telemetry.</div>
-            )}
+            <Bar 
+              data={{
+                labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                datasets: [{
+                  label: 'Tasks',
+                  data: [1, 2, 3, 4].map(id => matrixTasks.filter(t => t.quadrant === id).length),
+                  backgroundColor: ['#FF4D4D', '#FFD700', '#3B82F6', '#10B981'],
+                  borderRadius: 12,
+                }]
+              }} 
+              options={{ ...chartBase, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94A3B8', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: '#94A3B8' } } } }} 
+            />
           </div>
         </div>
       </div>
