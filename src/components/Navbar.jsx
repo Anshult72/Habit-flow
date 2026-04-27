@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, ChevronDown, LayoutDashboard, ListChecks, 
   Calendar as CalendarIcon, BarChart3, Sparkles, ArrowRight,
-  Settings, Award, FileText, Trophy
+  Settings, Award, FileText, Trophy, Swords, Users
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -65,6 +65,20 @@ export default function Navbar() {
       icon: Trophy, 
       desc: 'Global productivity rankings',
       color: '#E85D04'
+    },
+    { 
+      label: 'Duels', 
+      path: '/app/duels', 
+      icon: Swords, 
+      desc: '1v1 consistency trials',
+      color: '#ef4444'
+    },
+    { 
+      label: 'Squads', 
+      path: '/app/squads', 
+      icon: Users, 
+      desc: 'Team synchronization bonuses',
+      color: '#3b82f6'
     },
     { 
       label: 'Settings', 

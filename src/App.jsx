@@ -19,6 +19,8 @@ import FeaturesPage from './pages/FeaturesPage';
 import Onboarding from './pages/Onboarding';
 import AchievementNotifier from './components/AchievementNotifier';
 import LeaderboardPage from './pages/LeaderboardPage';
+import Duels from './pages/Duels';
+import Squads from './pages/Squads';
 
 function OnboardingCheck({ children }) {
   const hasCompleted = localStorage.getItem('hasCompletedOnboarding') === 'true';
@@ -51,6 +53,8 @@ function AnimatedRoutes() {
           <Route path="achievements" element={<Achievements />} />
           <Route path="reports" element={<Reports />} />
           <Route path="leaderboard" element={<LeaderboardPage />} />
+          <Route path="duels" element={<Duels />} />
+          <Route path="squads" element={<Squads />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

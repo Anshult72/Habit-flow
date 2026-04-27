@@ -1,38 +1,41 @@
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format, subDays } from 'date-fns';
-import { Trophy, Flame, Target, Zap, Sparkles } from 'lucide-react';
+import { Trophy, Flame, Target, Zap, Sparkles, Shield, Brain, ArrowUpRight, CheckCircle2, ChevronRight, Lock } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
-
-ChartJS.register(
-  CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler
-);
+import toast from 'react-hot-toast';
 
 export default function Dashboard() {
-  const { habits, completions, toggleCompletion, xp, level, addXP } = useStore();
+  const { 
+    habits, completions, toggleCompletion, xp, level, 
+    streakShields, onboardingDay, useShield, advanceOnboarding, getStats 
+  } = useStore();
+  
   const [today] = useState(new Date());
   const [dailyFocus, setDailyFocus] = useState(localStorage.getItem('dailyFocus') || '');
+  const [xpPopups, setXpPopups] = useState([]);
 
   const todayStr = format(today, 'yyyy-MM-dd');
   const todayCompletions = habits.filter(h => completions[`${h.id}-${todayStr}`]).length;
   const progress = habits.length ? (todayCompletions / habits.length) * 100 : 0;
+  
+  const { earnedToday, earnedThisWeek, earnedThisMonth } = getStats();
 
-  const handleToggle = (habitId) => {
-    toggleCompletion(habitId, todayStr);
-    if (!completions[`${habitId}-${todayStr}`]) addXP(15);
-    else addXP(-15);
+  const handleToggle = (habit) => {
+    const isCompleting = !completions[`${habit.id}-${todayStr}`];
+    toggleCompletion(habit.id, todayStr);
+    
+    if (isCompleting) {
+      const difficultyXp = { Easy: 10, Medium: 25, Hard: 50, Elite: 100 };
+      const amount = difficultyXp[habit.difficulty || 'Medium'];
+      
+      const id = Date.now();
+      setXpPopups(prev => [...prev, { id, amount }]);
+      setTimeout(() => {
+        setXpPopups(prev => prev.filter(p => p.id !== id));
+      }, 2000);
+    }
   };
 
   const handleFocusChange = (e) => {
@@ -52,58 +55,57 @@ export default function Dashboard() {
     return streak;
   }, [completions, habits, today, todayStr]);
 
-  const bestStreak = useMemo(() => {
-    let best = 0, current = 0;
-    const allDates = [...new Set(Object.keys(completions).map(k => k.split('-').slice(1).join('-')))].sort();
-    allDates.forEach(d => {
-      const had = habits.some(h => completions[`${h.id}-${d}`]);
-      if (had) { current++; best = Math.max(best, current); }
-      else current = 0;
-    });
-    return best;
-  }, [completions, habits]);
-
-  const habitStreaks = useMemo(() => {
-    const map = {};
-    habits.forEach(h => {
-      let streak = 0, d = today;
-      while (true) {
-        const dStr = format(d, 'yyyy-MM-dd');
-        if (completions[`${h.id}-${dStr}`]) { streak++; d = subDays(d, 1); }
-        else { if (dStr === todayStr) d = subDays(d, 1); else break; }
-      }
-      map[h.id] = streak;
-    });
-    return map;
-  }, [completions, habits, today, todayStr]);
-
   const stats = [
     { label: 'Current Streak', value: `${currentStreak} Days`, icon: Flame, color: 'text-orange-400', glow: 'shadow-[0_0_20px_rgba(251,146,60,0.2)]' },
-    { label: 'Best Streak', value: `${bestStreak} Days`, icon: Trophy, color: 'text-yellow-400', glow: 'shadow-[0_0_20px_rgba(250,204,21,0.2)]' },
     { label: 'Total XP', value: xp, icon: Zap, color: 'text-[#FF6B2C]', glow: 'shadow-[0_0_20px_rgba(255,107,44,0.2)]' },
-    { label: 'Completed', value: Object.keys(completions).length, icon: Target, color: 'text-success', glow: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]' },
+    { label: 'Streak Shields', value: streakShields, icon: Shield, color: 'text-blue-400', glow: 'shadow-[0_0_20px_rgba(96,165,250,0.2)]' },
+    { label: 'Productivity', value: `${Math.round(progress)}%`, icon: Target, color: 'text-success', glow: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]' },
   ];
 
   const circumference = 2 * Math.PI * 40;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className="space-y-10 pb-20">
+    <div className="space-y-10 pb-20 relative">
+      {/* XP Popups Container */}
+      <div className="fixed top-24 right-10 z-[100] flex flex-col gap-2 pointer-events-none">
+        <AnimatePresence>
+          {xpPopups.map(popup => (
+            <motion.div key={popup.id} initial={{ opacity: 0, x: 50, scale: 0.5 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, y: -50, scale: 0.5 }}
+              className="bg-[#FF6B2C] text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(255,107,44,0.4)]"
+            >
+              <Zap size={14} fill="currentColor" /> +{popup.amount} XP
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
         <div>
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 text-[#FF8C42] text-[10px] font-bold uppercase tracking-[0.2em] mb-4">
             <Sparkles size={12} /> System Synchronized
           </motion.div>
           <h1 className="text-4xl md:text-5xl font-display font-bold text-white tracking-tight">
-            Welcome back, User <span className="text-2xl inline-block animate-bounce origin-bottom">👋</span>
+            Control Center <span className="text-2xl inline-block animate-bounce origin-bottom">🛰️</span>
           </h1>
           <p className="text-textMuted mt-3 text-lg font-light">
-            Protocol active. You've completed <span className="text-white font-bold">{todayCompletions} of {habits.length}</span> objectives today.
+            Sequence active. <span className="text-white font-bold">{todayCompletions} of {habits.length}</span> objectives synchronized.
           </p>
         </div>
-        <div className="glass-card px-6 py-4 rounded-2xl flex flex-col items-end gap-1 border-white/5">
-          <p className="text-[10px] text-textMuted font-bold uppercase tracking-widest">Active Sequence</p>
-          <p className="text-lg font-bold text-white tracking-tight">{format(today, 'EEEE, MMMM do')}</p>
+        <div className="flex items-center gap-4">
+          <div className="glass-card px-6 py-4 rounded-2xl flex flex-col items-end gap-1 border-white/5">
+            <p className="text-[10px] text-textMuted font-bold uppercase tracking-widest">Growth Phase</p>
+            <p className="text-lg font-bold text-white tracking-tight">Day {onboardingDay} / 7</p>
+          </div>
+          {streakShields > 0 && (
+            <motion.div whileHover={{ scale: 1.05 }} className="glass-card px-4 py-4 rounded-2xl flex items-center gap-3 border-[#3B82F6]/30 bg-[#3B82F6]/5 cursor-help">
+              <Shield size={24} className="text-blue-400" fill="rgba(59,130,246,0.2)" />
+              <div className="text-right">
+                <p className="text-[9px] text-blue-300/60 font-bold uppercase tracking-widest">Shield Active</p>
+                <p className="text-sm font-bold text-white">{streakShields} Charges</p>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -112,13 +114,9 @@ export default function Dashboard() {
           const Icon = stat.icon;
           return (
             <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className={`glass-card p-7 rounded-2xl relative overflow-hidden group hover:border-[#FF6B2C]/40 transition-all duration-500 ${stat.glow}`}>
-              <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity transform translate-x-4 -translate-y-4">
-                <Icon size={90} className={stat.color} />
-              </div>
+              <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity transform translate-x-4 -translate-y-4"><Icon size={90} className={stat.color} /></div>
               <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-white/5 border border-white/10 group-hover:scale-110 group-hover:border-[#FF6B2C]/30 transition-all">
-                  <Icon size={22} className={stat.color} />
-                </div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-white/5 border border-white/10 group-hover:scale-110 group-hover:border-[#FF6B2C]/30 transition-all"><Icon size={22} className={stat.color} /></div>
                 <p className="text-xs text-textMuted font-bold mb-1 tracking-[0.1em] uppercase">{stat.label}</p>
                 <p className="text-3xl font-display font-bold text-white tracking-tight">{stat.value}</p>
               </div>
@@ -128,8 +126,37 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass-card p-8 md:p-10 rounded-[2.5rem] border-white/5 h-full">
+        <div className="lg:col-span-2 space-y-8">
+          {/* Onboarding Journey Progress */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-8 rounded-[2rem] border-white/5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF6B2C]/5 rounded-full blur-[80px] -z-10 group-hover:bg-[#FF6B2C]/10 transition-all duration-700" />
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-white mb-1">Evolution Sequence</h3>
+                <p className="text-xs text-textMuted">Complete Day {onboardingDay} missions to unlock tier rewards.</p>
+              </div>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5, 6, 7].map(d => (
+                  <div key={d} className={`w-6 h-1.5 rounded-full transition-all duration-500 ${d === onboardingDay ? 'bg-[#FF6B2C] w-10 shadow-[0_0_10px_#FF6B2C]' : d < onboardingDay ? 'bg-[#FF6B2C]/40' : 'bg-white/10'}`} />
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 group-hover:border-[#FF6B2C]/20 transition-all">
+                <div className="w-10 h-10 rounded-lg bg-[#FF6B2C]/10 flex items-center justify-center text-[#FF8C42]"><CheckCircle2 size={20} /></div>
+                <div><p className="text-xs font-bold text-white">Daily Ritual</p><p className="text-[10px] text-textMuted">Complete all protocols today</p></div>
+                <ArrowUpRight size={14} className="ml-auto text-textMuted group-hover:text-[#FF8C42] transition-colors" />
+              </div>
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 group-hover:border-[#FF6B2C]/20 transition-all opacity-50">
+                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-white/20"><Lock size={20} /></div>
+                <div><p className="text-xs font-bold text-white">Elite Milestone</p><p className="text-[10px] text-textMuted">Unlocks on Day {onboardingDay + 1}</p></div>
+                <ChevronRight size={14} className="ml-auto text-textMuted" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Today's Protocols */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass-card p-8 md:p-10 rounded-[2.5rem] border-white/5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-6">
               <div>
                 <h2 className="text-3xl font-display font-bold text-white tracking-tight">Today's Protocol</h2>
@@ -137,8 +164,8 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center gap-6 bg-white/5 px-6 py-4 rounded-3xl border border-white/10 backdrop-blur-md">
                 <div className="text-right">
-                  <p className="text-[10px] text-textMuted font-bold uppercase tracking-wider mb-1">Efficiency</p>
-                  <p className="text-xl font-bold text-[#FF8C42] leading-none">{Math.round(progress)}%</p>
+                  <p className="text-[10px] text-textMuted font-bold uppercase tracking-wider mb-1">XP Earned</p>
+                  <p className="text-xl font-bold text-[#FF8C42] leading-none">+{earnedToday}</p>
                 </div>
                 <div className="relative w-16 h-16 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -148,9 +175,7 @@ export default function Dashboard() {
                       strokeDasharray={circumference} initial={{ strokeDashoffset: circumference }}
                       animate={{ strokeDashoffset }} transition={{ duration: 1.5, ease: "easeOut" }} strokeLinecap="round"
                     />
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#FF6B2C" /><stop offset="100%" stopColor="#FFB347" /></linearGradient>
-                    </defs>
+                    <defs><linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#FF6B2C" /><stop offset="100%" stopColor="#FFB347" /></linearGradient></defs>
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs">{todayCompletions}/{habits.length}</div>
                 </div>
@@ -159,8 +184,9 @@ export default function Dashboard() {
             <div className="space-y-4">
               {habits.map((habit, index) => {
                 const isCompleted = completions[`${habit.id}-${todayStr}`];
+                const difficultyXp = { Easy: 10, Medium: 25, Hard: 50, Elite: 100 };
                 return (
-                  <motion.div key={habit.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + index * 0.1 }} onClick={() => handleToggle(habit.id)} className={`flex items-center gap-6 p-5 md:p-6 rounded-2xl cursor-pointer transition-all border group/habit ${isCompleted ? 'bg-[#FF6B2C]/5 border-[#FF6B2C]/40 shadow-[inset_0_0_30px_rgba(255,107,44,0.05)]' : 'bg-white/[0.01] border-white/5 hover:border-white/20'}`}>
+                  <motion.div key={habit.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + index * 0.1 }} onClick={() => handleToggle(habit)} className={`flex items-center gap-6 p-5 md:p-6 rounded-2xl cursor-pointer transition-all border group/habit ${isCompleted ? 'bg-[#FF6B2C]/5 border-[#FF6B2C]/40 shadow-[inset_0_0_30px_rgba(255,107,44,0.05)]' : 'bg-white/[0.01] border-white/5 hover:border-white/20'}`}>
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-500 ${isCompleted ? 'bg-[#FF6B2C] border-[#FF6B2C] shadow-[0_0_20px_rgba(255,107,44,0.6)]' : 'border-2 border-white/10 group-hover/habit:border-[#FF6B2C]/50'}`}>
                       {isCompleted && <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></motion.svg>}
                     </div>
@@ -168,7 +194,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3 flex-wrap">
                         <h3 className={`font-bold text-xl truncate transition-all duration-500 ${isCompleted ? 'text-white/40 line-through' : 'text-white'}`}>{habit.name}</h3>
                         <span className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider text-textMuted group-hover/habit:text-[#FF8C42] transition-colors">{habit.category}</span>
-                        {habitStreaks[habit.id] > 0 && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[9px] font-bold uppercase tracking-wider">🔥 {habitStreaks[habit.id]}d</motion.span>}
+                        <span className={`px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider ${habit.difficulty === 'Elite' ? 'text-purple-400' : habit.difficulty === 'Hard' ? 'text-orange-400' : 'text-textMuted'}`}>{habit.difficulty} ({difficultyXp[habit.difficulty || 'Medium']} XP)</span>
                       </div>
                       <p className="text-xs text-textMuted mt-1 font-medium">{habit.goal} day target cycle</p>
                     </div>
@@ -181,25 +207,48 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-8 flex flex-col">
+          {/* AI Performance Insights */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="glass-card p-8 rounded-[2.5rem] border border-[#FF6B2C]/20 bg-[#FF6B2C]/5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-6 text-[#FF6B2C] opacity-10 group-hover:opacity-20 transition-opacity"><Brain size={60} /></div>
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 rounded-lg bg-[#FF6B2C]/20 flex items-center justify-center border border-[#FF6B2C]/30"><Sparkles size={16} className="text-[#FF8C42]" /></div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest">AI Intelligence</h3>
+              </div>
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-black/40 border border-white/5">
+                  <p className="text-xs text-white/90 leading-relaxed font-medium italic">"Your <span className="text-[#FF8C42] font-bold">Deep Work</span> consistency drops significantly on Tuesdays. Consider shifting the protocol 2 hours earlier."</p>
+                </div>
+                <div className="p-4 rounded-xl bg-black/40 border border-white/5">
+                  <p className="text-xs text-white/90 leading-relaxed font-medium italic">"Protocols initiated before <span className="text-[#FF8C42] font-bold">09:00 AM</span> have a 43% higher completion rate."</p>
+                </div>
+              </div>
+              <button className="w-full mt-6 py-3 rounded-xl border border-[#FF6B2C]/20 hover:bg-[#FF6B2C]/10 text-[10px] font-bold text-[#FF8C42] uppercase tracking-[0.2em] transition-all">View Intelligence Report</button>
+            </div>
+          </motion.div>
+
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden group border-white/5">
             <div className="absolute inset-0 bg-gradient-to-br from-[#FF6B2C]/10 via-transparent to-[#E85D04]/10 opacity-40 group-hover:opacity-60 transition-opacity" />
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-8">
                 <div className="w-12 h-12 rounded-xl bg-[#FF6B2C]/20 flex items-center justify-center border border-[#FF6B2C]/30 shadow-[0_0_20px_rgba(255,107,44,0.2)]"><Zap className="text-[#FF8C42]" size={24} /></div>
                 <div className="text-right">
-                  <p className="text-[10px] text-textMuted font-bold uppercase tracking-widest mb-1">Current Tier</p>
-                  <p className="text-3xl font-display font-bold text-white">Lvl {level}</p>
+                  <p className="text-[10px] text-textMuted font-bold uppercase tracking-widest mb-1">Weekly Yield</p>
+                  <p className="text-3xl font-display font-bold text-white">{earnedThisWeek} XP</p>
                 </div>
               </div>
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-white font-bold tracking-tight">{xp} Total XP</span>
-                  <span className="text-textMuted font-medium">{100 - (xp % 100)} XP to Next Rank</span>
+                  <span className="text-white font-bold tracking-tight">Level {level}</span>
+                  <span className="text-textMuted font-medium">{500 - (xp % 500)} XP to Rank Up</span>
                 </div>
                 <div className="h-4 w-full bg-black/50 rounded-full overflow-hidden border border-white/5 p-1 backdrop-blur-md">
-                  <motion.div className="h-full bg-gradient-to-r from-[#FF6B2C] to-[#FFB347] rounded-full relative" initial={{ width: 0 }} animate={{ width: `${xp % 100}%` }} transition={{ duration: 1.2, type: "spring" }}><div className="absolute top-0 right-0 w-8 h-full bg-white/30 blur-md" /></motion.div>
+                  <motion.div className="h-full bg-gradient-to-r from-[#FF6B2C] to-[#FFB347] rounded-full relative" initial={{ width: 0 }} animate={{ width: `${(xp % 500) / 5}%` }} transition={{ duration: 1.2, type: "spring" }} />
                 </div>
-                <p className="text-[10px] text-textMuted font-medium text-center uppercase tracking-[0.2em] pt-2">Growth Protocol Active</p>
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                  <div><p className="text-[9px] text-textMuted font-bold uppercase tracking-widest mb-1">Today</p><p className="text-sm font-bold text-white">+{earnedToday} XP</p></div>
+                  <div><p className="text-[9px] text-textMuted font-bold uppercase tracking-widest mb-1">This Month</p><p className="text-sm font-bold text-white">+{earnedThisMonth} XP</p></div>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -219,34 +268,6 @@ export default function Dashboard() {
           </motion.div>
         </div>
       </div>
-
-      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="glass-card p-8 md:p-12 rounded-[3rem] border-white/5">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-6">
-          <div><h2 className="text-3xl font-display font-bold text-white tracking-tight">Performance Matrix</h2><p className="text-textMuted text-sm mt-1">Cross-sectional analysis of productivity metrics</p></div>
-          <div className="flex items-center gap-3 bg-[#FF6B2C]/5 px-4 py-2 rounded-xl border border-[#FF6B2C]/20"><div className="w-2 h-2 rounded-full bg-[#FF6B2C] shadow-[0_0_10px_#FF6B2C]" /><span className="text-[10px] font-bold text-[#FF8C42] uppercase tracking-widest">Active Week</span></div>
-        </div>
-        <div className="h-80 w-full relative">
-          <Line data={{
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: [{
-              label: 'Productivity', data: [65, 59, 80, 81, 56, 95, 100], fill: true,
-              backgroundColor: (context) => {
-                const ctx = context.chart.ctx;
-                const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-                gradient.addColorStop(0, 'rgba(255, 107, 44, 0.4)');
-                gradient.addColorStop(1, 'rgba(255, 107, 44, 0.0)');
-                return gradient;
-              },
-              borderColor: '#FF6B2C', borderWidth: 2, tension: 0.4, pointBackgroundColor: '#FF6B2C', pointBorderColor: '#fff', pointRadius: 4, pointHoverRadius: 6,
-            }],
-          }} options={{
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, backgroundColor: 'rgba(20, 20, 25, 0.9)', titleColor: '#F8FAFC', bodyColor: '#94A3B8', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 } },
-            scales: { y: { display: false }, x: { grid: { display: false }, ticks: { color: '#94A3B8', font: { family: 'Inter', size: 12 } } } },
-            interaction: { mode: 'nearest', axis: 'x', intersect: false },
-          }} />
-        </div>
-      </motion.div>
     </div>
   );
 }

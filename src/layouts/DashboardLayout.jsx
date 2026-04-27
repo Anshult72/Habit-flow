@@ -1,21 +1,11 @@
-import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ListTodo, BarChart3, Calendar, Settings as SettingsIcon, Menu, X, ArrowLeft } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-const NAV_ITEMS = [
-  { path: '/app', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { path: '/app/habits', label: 'Habits', icon: ListTodo },
-  { path: '/app/calendar', label: 'Calendar', icon: Calendar },
-  { path: '/app/analytics', label: 'Analytics', icon: BarChart3 },
-  { path: '/app/settings', label: 'Settings', icon: SettingsIcon },
-];
+import { Outlet } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import MobileDock from '../components/MobileDock';
 
 export default function DashboardLayout() {
   return (
     <div className="min-h-screen bg-[#050505] text-textMain font-sans relative pt-[81px]">
-      {/* Main Content Area */}
-      <main className="min-h-[calc(100vh-81px)] overflow-y-auto overflow-x-hidden relative">
+      <main className="min-h-[calc(100vh-81px)] overflow-y-auto overflow-x-hidden relative pb-24 md:pb-10">
         <div className="p-6 md:p-10 lg:p-12 w-full max-w-[1400px] mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -32,6 +22,9 @@ export default function DashboardLayout() {
           <div className="absolute bottom-[10%] right-[10%] w-[40%] h-[40%] bg-[#E85D04]/3 rounded-full blur-[120px]" />
         </div>
       </main>
+
+      {/* Floating Mobile Dock */}
+      <MobileDock />
     </div>
   );
 }
