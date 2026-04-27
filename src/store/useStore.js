@@ -49,6 +49,24 @@ const useStore = create(
         const newLevel = Math.floor(newXP / 100) + 1;
         return { xp: newXP, level: newLevel };
       }),
+
+      notes: {}, // { 'YYYY-MM-DD': 'Note content' }
+      setNote: (dateStr, content) => set((state) => ({
+        notes: { ...state.notes, [dateStr]: content }
+      })),
+
+      screenTime: {}, // { 'YYYY-MM-DD': hours }
+      setScreenTime: (dateStr, hours) => set((state) => ({
+        screenTime: { ...state.screenTime, [dateStr]: hours }
+      })),
+
+      achievements: [], // list of unlocked achievement IDs
+      unlockAchievement: (id) => set((state) => {
+        if (!state.achievements.includes(id)) {
+          return { achievements: [...state.achievements, id] };
+        }
+        return state;
+      }),
     }),
     {
       name: 'habitflow-v2-storage',
@@ -56,7 +74,10 @@ const useStore = create(
         habits: state.habits, 
         completions: state.completions,
         xp: state.xp,
-        level: state.level
+        level: state.level,
+        notes: state.notes,
+        screenTime: state.screenTime,
+        achievements: state.achievements
       }),
     }
   )

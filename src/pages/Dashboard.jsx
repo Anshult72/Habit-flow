@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { Trophy, Flame, Target, Zap, Sparkles } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Line } from 'react-chartjs-2';
@@ -44,6 +44,26 @@ export default function Dashboard() {
     }
   };
 
+  const currentStreak = useMemo(() => {
+    let streak = 0;
+    let d = today;
+    while (true) {
+      const dStr = format(d, 'yyyy-MM-dd');
+      const completedOnDay = habits.some(h => completions[`${h.id}-${dStr}`]);
+      if (completedOnDay) {
+        streak++;
+        d = subDays(d, 1);
+      } else {
+        if (format(d, 'yyyy-MM-dd') === todayStr) {
+          d = subDays(d, 1);
+        } else {
+          break;
+        }
+      }
+    }
+    return streak;
+  }, [completions, habits, today]);
+
   const chartData = useMemo(() => ({
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [
@@ -83,11 +103,14 @@ export default function Dashboard() {
   };
 
   const stats = [
-    { label: 'Current Streak', value: '12 Days', icon: Flame, color: 'text-orange-400', glow: 'shadow-[0_0_20px_rgba(251,146,60,0.2)]' },
+    { label: 'Current Streak', value: `${currentStreak} Days`, icon: Flame, color: 'text-orange-400', glow: 'shadow-[0_0_20px_rgba(251,146,60,0.2)]' },
     { label: 'Level', value: level, icon: Trophy, color: 'text-yellow-400', glow: 'shadow-[0_0_20px_rgba(250,204,21,0.2)]' },
     { label: 'Total XP', value: xp, icon: Zap, color: 'text-[#FF6B2C]', glow: 'shadow-[0_0_20px_rgba(255,107,44,0.2)]' },
     { label: 'Completed', value: Object.keys(completions).length, icon: Target, color: 'text-success', glow: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]' },
   ];
+
+  const circumference = 2 * Math.PI * 40;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
     <div className="space-y-10 pb-20">
@@ -157,18 +180,33 @@ export default function Dashboard() {
                 <h2 className="text-3xl font-display font-bold text-white tracking-tight">Today's Protocol</h2>
                 <p className="text-textMuted text-sm mt-1">Daily directives for current operation</p>
               </div>
-              <div className="flex items-center gap-5 bg-white/5 px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-md">
+              <div className="flex items-center gap-6 bg-white/5 px-6 py-4 rounded-3xl border border-white/10 backdrop-blur-md">
                 <div className="text-right">
-                  <p className="text-[10px] text-textMuted font-bold uppercase tracking-wider mb-0.5">Efficiency</p>
-                  <p className="text-lg font-bold text-[#FF8C42] leading-none">{Math.round(progress)}%</p>
+                  <p className="text-[10px] text-textMuted font-bold uppercase tracking-wider mb-1">Efficiency</p>
+                  <p className="text-xl font-bold text-[#FF8C42] leading-none">{Math.round(progress)}%</p>
                 </div>
-                <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
-                  <motion.div 
-                    className="h-full bg-gradient-to-r from-[#FF6B2C] to-[#FFB347] relative"
-                    initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 1, ease: "easeOut" }}
-                  >
-                    <div className="absolute top-0 right-0 w-8 h-full bg-white/40 blur-md" />
-                  </motion.div>
+                <div className="relative w-16 h-16 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
+                    <motion.circle
+                      cx="50" cy="50" r="40"
+                      stroke="url(#gradient)" strokeWidth="8" fill="none"
+                      strokeDasharray={circumference}
+                      initial={{ strokeDashoffset: circumference }}
+                      animate={{ strokeDashoffset }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                      strokeLinecap="round"
+                    />
+                    <defs>
+                      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#FF6B2C" />
+                        <stop offset="100%" stopColor="#FFB347" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs">
+                    {todayCompletions}/{habits.length}
+                  </div>
                 </div>
               </div>
             </div>

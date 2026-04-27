@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2, X, Sparkles } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Sparkles, Search, Filter, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import useStore from '../store/useStore';
 
 export default function Habits() {
@@ -9,8 +10,32 @@ export default function Habits() {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ name: '', category: 'Health', color: '#FF6B2C', goal: 30 });
 
-  const categories = ['Health', 'Mindfulness', 'Learning', 'Fitness', 'Productivity', 'Finance'];
-  const colors = ['#FF6B2C', '#E85D04', '#FF6B2C', '#E85D04', '#FF8C42', '#FF6B2C', '#FF8C42'];
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+
+  const categories = ['Health', 'Mindfulness', 'Learning', 'Fitness', 'Productivity', 'Finance', 'Deep Work', 'Detox'];
+  const colors = ['#FF6B2C', '#E85D04', '#FF8C42', '#fb923c', '#f97316', '#ea580c', '#c2410c'];
+
+  const templates = [
+    { name: 'Monk Mode', category: 'Deep Work', color: '#E85D04', goal: 30 },
+    { name: 'Dopamine Detox', category: 'Detox', color: '#c2410c', goal: 30 },
+    { name: 'Fitness Routine', category: 'Fitness', color: '#FF6B2C', goal: 20 },
+    { name: 'Study System', category: 'Learning', color: '#f97316', goal: 25 },
+    { name: 'Morning Routine', category: 'Productivity', color: '#fb923c', goal: 28 },
+  ];
+
+  const filteredHabits = habits.filter(h => {
+    const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || h.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const applyTemplate = (template) => {
+    addHabit({ id: Date.now().toString(), ...template });
+    toast.success(`Applied template: ${template.name}`);
+    setIsTemplatesModalOpen(false);
+  };
 
   const handleOpenModal = (habit = null) => {
     if (habit) {
@@ -44,19 +69,53 @@ export default function Habits() {
           </h1>
           <p className="text-textMuted mt-2 text-lg">Define and calibrate your daily operational habits.</p>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="group relative px-6 py-3 rounded-full bg-white text-black font-medium overflow-hidden flex items-center gap-2"
-        >
-          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-[#FF6B2C]/20 to-[#E85D04]/20 group-hover:opacity-100 opacity-0 transition-opacity" />
-          <Plus size={20} className="relative z-10" />
-          <span className="relative z-10">New Protocol</span>
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setIsTemplatesModalOpen(true)}
+            className="px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 text-white font-medium flex items-center gap-2 border border-white/10 transition-all"
+          >
+            <Layers size={20} className="text-[#FF8C42]" />
+            Templates
+          </button>
+          <button
+            onClick={() => handleOpenModal()}
+            className="group relative px-6 py-3 rounded-full bg-white text-black font-medium overflow-hidden flex items-center gap-2"
+          >
+            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-[#FF6B2C]/20 to-[#E85D04]/20 group-hover:opacity-100 opacity-0 transition-opacity" />
+            <Plus size={20} className="relative z-10" />
+            <span className="relative z-10">New Protocol</span>
+          </button>
+        </div>
       </div>
+
+      <div className="flex flex-col md:flex-row gap-4 relative z-10">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-textMuted" size={20} />
+          <input
+            type="text"
+            placeholder="Search protocols..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-[#FF6B2C] transition-colors"
+          />
+        </div>
+        <div className="relative min-w-[200px]">
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-textMuted" size={20} />
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-[#FF6B2C] transition-colors appearance-none"
+          >
+            <option value="All" className="bg-background">All Classifications</option>
+            {categories.map(c => (
+              <option key={c} value={c} className="bg-background">{c}</option>
+            ))}
+          </select>
+        </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>
-          {habits.map((habit, i) => (
+          {filteredHabits.map((habit, i) => (
             <motion.div
               key={habit.id}
               layout
@@ -188,6 +247,51 @@ export default function Habits() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isTemplatesModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-background/80 backdrop-blur-xl"
+              onClick={() => setIsTemplatesModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="glass-card border border-white/10 rounded-3xl p-8 w-full max-w-2xl relative z-10 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-display font-bold text-white flex items-center gap-2">
+                  <Layers className="text-[#FF8C42]" /> Ready-Made Systems
+                </h2>
+                <button onClick={() => setIsTemplatesModalOpen(false)} className="text-textMuted hover:text-white p-2 rounded-full hover:bg-white/5 transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {templates.map((tpl, i) => (
+                  <motion.div
+                    key={i}
+                    whileHover={{ scale: 1.02 }}
+                    className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-[#FF6B2C]/50 cursor-pointer transition-all relative overflow-hidden group"
+                    onClick={() => applyTemplate(tpl)}
+                  >
+                    <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-30 transition-opacity" style={{ backgroundColor: tpl.color }} />
+                    <h3 className="text-lg font-bold text-white mb-1">{tpl.name}</h3>
+                    <div className="flex items-center gap-2 text-sm text-textMuted">
+                      <span className="px-2 py-0.5 rounded-md bg-white/5 uppercase tracking-wide text-[10px]">{tpl.category}</span>
+                      <span>• {tpl.goal} Days</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </motion.div>
           </div>
         )}

@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, ChevronDown, LayoutDashboard, ListChecks, 
   Calendar as CalendarIcon, BarChart3, Sparkles, ArrowRight,
-  Settings
+  Settings, Award
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -46,6 +46,13 @@ export default function Navbar() {
       color: '#E85D04'
     },
     { 
+      label: 'Achievements', 
+      path: '/app/achievements', 
+      icon: Award, 
+      desc: 'Trophies and milestones',
+      color: '#FF6B2C'
+    },
+    { 
       label: 'Settings', 
       path: '/app/settings', 
       icon: Settings, 
@@ -56,7 +63,6 @@ export default function Navbar() {
 
   const otherLinks = [
     { label: 'Features', path: '/features' },
-    { label: 'Leaderboard', path: '/leaderboard' },
     { label: 'Premium', path: '/premium' },
   ];
 
