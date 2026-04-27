@@ -64,6 +64,32 @@ export default function Dashboard() {
     return streak;
   }, [completions, habits, today]);
 
+  const bestStreak = useMemo(() => {
+    let best = 0, current = 0;
+    const allDates = [...new Set(Object.keys(completions).map(k => k.split('-').slice(1).join('-')))].sort();
+    allDates.forEach(d => {
+      const had = habits.some(h => completions[`${h.id}-${d}`]);
+      if (had) { current++; best = Math.max(best, current); }
+      else current = 0;
+    });
+    return best;
+  }, [completions, habits]);
+
+  // Per-habit streak
+  const habitStreaks = useMemo(() => {
+    const map = {};
+    habits.forEach(h => {
+      let streak = 0, d = today;
+      while (true) {
+        const dStr = format(d, 'yyyy-MM-dd');
+        if (completions[`${h.id}-${dStr}`]) { streak++; d = subDays(d, 1); }
+        else { if (dStr === todayStr) d = subDays(d, 1); else break; }
+      }
+      map[h.id] = streak;
+    });
+    return map;
+  }, [completions, habits, today]);
+
   const chartData = useMemo(() => ({
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [
@@ -104,7 +130,7 @@ export default function Dashboard() {
 
   const stats = [
     { label: 'Current Streak', value: `${currentStreak} Days`, icon: Flame, color: 'text-orange-400', glow: 'shadow-[0_0_20px_rgba(251,146,60,0.2)]' },
-    { label: 'Level', value: level, icon: Trophy, color: 'text-yellow-400', glow: 'shadow-[0_0_20px_rgba(250,204,21,0.2)]' },
+    { label: 'Best Streak', value: `${bestStreak} Days`, icon: Trophy, color: 'text-yellow-400', glow: 'shadow-[0_0_20px_rgba(250,204,21,0.2)]' },
     { label: 'Total XP', value: xp, icon: Zap, color: 'text-[#FF6B2C]', glow: 'shadow-[0_0_20px_rgba(255,107,44,0.2)]' },
     { label: 'Completed', value: Object.keys(completions).length, icon: Target, color: 'text-success', glow: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]' },
   ];
@@ -241,11 +267,19 @@ export default function Dashboard() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <h3 className={`font-bold text-xl truncate transition-all duration-500 ${isCompleted ? 'text-white/40 line-through' : 'text-white'}`}>
                           {habit.name}
                         </h3>
                         <span className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider text-textMuted group-hover/habit:text-[#FF8C42] transition-colors">{habit.category}</span>
+                        {habitStreaks[habit.id] > 0 && (
+                          <motion.span
+                            initial={{ scale: 0 }} animate={{ scale: 1 }}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[9px] font-bold uppercase tracking-wider"
+                          >
+                            🔥 {habitStreaks[habit.id]}d
+                          </motion.span>
+                        )}
                       </div>
                       <p className="text-xs text-textMuted mt-1 font-medium">{habit.goal} day target cycle</p>
                     </div>

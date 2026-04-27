@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, ChevronDown, LayoutDashboard, ListChecks, 
   Calendar as CalendarIcon, BarChart3, Sparkles, ArrowRight,
-  Settings, Award
+  Settings, Award, FileText
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -44,6 +44,13 @@ export default function Navbar() {
       icon: BarChart3, 
       desc: 'Advanced data insights',
       color: '#E85D04'
+    },
+    { 
+      label: 'Reports', 
+      path: '/app/reports', 
+      icon: FileText, 
+      desc: 'Weekly & monthly summaries',
+      color: '#a855f7'
     },
     { 
       label: 'Achievements', 

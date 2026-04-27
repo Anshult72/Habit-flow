@@ -12,6 +12,8 @@ import CalendarPage from './pages/CalendarPage';
 import Settings from './pages/Settings';
 import HelpCenter from './pages/HelpCenter';
 import Achievements from './pages/Achievements';
+import Reports from './pages/Reports';
+import PWAInstallButton from './components/PWAInstallButton';
 import PremiumPage from './pages/PremiumPage';
 import FeaturesPage from './pages/FeaturesPage';
 import Onboarding from './pages/Onboarding';
@@ -33,6 +35,7 @@ function AnimatedRoutes() {
           <Route path="analytics" element={<Analytics />} />
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="achievements" element={<Achievements />} />
+          <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -70,6 +73,7 @@ function App() {
           <Navbar />
         </motion.div>
         <AnimatedRoutes />
+        <PWAInstallButton />
       </SceneWrapper>
     </Router>
   );
