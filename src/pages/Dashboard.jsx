@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format, subDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
-import { Trophy, Flame, Target, Zap, Sparkles, Shield, Brain, ArrowUpRight, CheckCircle2, ChevronRight, Lock, Rocket } from 'lucide-react';
+import { Trophy, Flame, Target, Zap, Sparkles, Shield, Brain, ArrowUpRight, CheckCircle2, ChevronRight, Lock, Rocket, StickyNote, Play, BookOpen, Plus, Clock } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Line } from 'react-chartjs-2';
 import toast from 'react-hot-toast';
@@ -12,7 +12,7 @@ export default function Dashboard() {
   const { 
     habits, completions, toggleCompletion, xp, level, 
     streakShields, onboardingDay, useShield, advanceOnboarding, getStats,
-    matrixTasks, missions
+    matrixTasks, missions, memos
   } = useStore();
   const navigate = useNavigate();
   
@@ -208,6 +208,28 @@ export default function Dashboard() {
               })}
             </div>
           </motion.div>
+
+          {/* Quick Actions Widget */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Deep Focus', icon: Play, path: '/app/focus-zone', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:border-blue-500/40' },
+              { label: 'New Memo', icon: Plus, path: '/app/memo', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20 hover:border-orange-500/40' },
+              { label: 'Study Session', icon: BookOpen, path: '/app/learning-hub', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:border-purple-500/40' },
+              { label: 'Matrix View', icon: Target, path: '/app/matrix', color: 'bg-green-500/10 text-green-400 border-green-500/20 hover:border-green-500/40' },
+            ].map((action, idx) => {
+              const ActionIcon = action.icon;
+              return (
+                <button
+                  key={idx}
+                  onClick={() => navigate(action.path)}
+                  className={`glass-card p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 ${action.color}`}
+                >
+                  <ActionIcon size={24} />
+                  <span className="text-xs font-bold">{action.label}</span>
+                </button>
+              );
+            })}
+          </motion.div>
         </div>
 
         <div className="space-y-8 flex flex-col">
@@ -260,6 +282,33 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
+          {/* Memo / Second Brain Integration */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.56 }} className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden group border-white/5">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                <StickyNote size={16} className="text-[#FF6B2C]" /> Cognitive Sync
+              </h3>
+              <button onClick={() => navigate('/app/memo')} className="text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:underline">Launch Brain</button>
+            </div>
+            <div className="space-y-3">
+              {memos.filter(m => m.isPinned).length > 0 ? (
+                memos.filter(m => m.isPinned).slice(0, 2).map(memo => (
+                  <div key={memo.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-[#FF6B2C]/30 transition-all cursor-pointer" onClick={() => navigate('/app/memo')}>
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-xs font-bold text-white truncate pr-4">{memo.title}</p>
+                      <span className="text-[8px] font-black text-[#FF8C42] uppercase tracking-widest">{memo.category}</span>
+                    </div>
+                    <p className="text-[10px] text-textMuted line-clamp-2 leading-relaxed">{memo.content}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="p-6 rounded-xl border border-dashed border-white/10 text-center">
+                  <p className="text-[10px] text-textMuted uppercase font-bold tracking-widest">No Priority Memos Cached</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
           {/* Mission Countdown Integration */}
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.58 }} className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden group border-white/5">
             <div className="flex items-center justify-between mb-6">
@@ -288,6 +337,30 @@ export default function Dashboard() {
             ) : (
               <p className="text-xs text-textMuted italic">No active missions initialized.</p>
             )}
+          </motion.div>
+
+          {/* Learning Progress Integration */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.59 }} className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden group border-white/5">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                <BookOpen size={16} className="text-[#FF6B2C]" /> Learning Hub
+              </h3>
+              <button onClick={() => navigate('/app/learning-hub')} className="text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:underline">Modules</button>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 p-3 rounded-xl bg-white/5 border border-white/10">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                  <Clock size={18} className="text-purple-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-white mb-1">Advanced React Patterns</p>
+                  <div className="h-1.5 w-full bg-black/50 rounded-full overflow-hidden">
+                    <div className="h-full bg-purple-500 w-[45%]" />
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-purple-400">45%</span>
+              </div>
+            </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden group border-white/5">

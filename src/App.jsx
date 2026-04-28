@@ -24,6 +24,10 @@ import MissionCountdown from './pages/MissionCountdown';
 import FocusZone from './pages/FocusZone';
 import Duels from './pages/Duels';
 import Squads from './pages/Squads';
+import LearningHub from './pages/LearningHub';
+import MemoSection from './pages/MemoSection';
+import WishlistSection from './pages/WishlistSection';
+import PlaceholderPage from './pages/PlaceholderPage';
 
 function OnboardingCheck({ children }) {
   const hasCompleted = localStorage.getItem('hasCompletedOnboarding') === 'true';
@@ -59,20 +63,49 @@ function AnimatedRoutes() {
           <Route path="duels" element={<Duels />} />
           <Route path="squads" element={<Squads />} />
           <Route path="settings" element={<Settings />} />
-        </Route>
-
-        <Route path="/tracker" element={
-          <OnboardingCheck>
-            <DashboardLayout />
-          </OnboardingCheck>
-        }>
           <Route path="matrix" element={<EisenhowerMatrix />} />
           <Route path="mission-countdown" element={<MissionCountdown />} />
           <Route path="focus-zone" element={<FocusZone />} />
+          <Route path="learning-hub" element={<LearningHub />} />
+          <Route path="memo" element={<MemoSection />} />
+          <Route path="wishlist" element={<WishlistSection />} />
+          
+          {/* Fallback placeholder modules for incomplete sections */}
+          <Route path="pomodoro" element={<PlaceholderPage />} />
+          <Route path="stopwatch" element={<PlaceholderPage />} />
+          <Route path="vision-board" element={<PlaceholderPage />} />
+          <Route path="themes" element={<PlaceholderPage />} />
+          <Route path="account" element={<PlaceholderPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
+  );
+}
+
+function AppContent() {
+  const location = useLocation();
+  const isAppRoute = location.pathname.startsWith('/app');
+
+  return (
+    <SceneWrapper>
+      <AnimatePresence>
+        {!isAppRoute && (
+          <motion.div
+            key="public-navbar"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <Navbar />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatedRoutes />
+      <PWAInstallButton />
+      <AchievementNotifier />
+    </SceneWrapper>
   );
 }
 
@@ -96,18 +129,7 @@ function App() {
           },
         }}
       />
-      <SceneWrapper>
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-        >
-          <Navbar />
-        </motion.div>
-        <AnimatedRoutes />
-        <PWAInstallButton />
-        <AchievementNotifier />
-      </SceneWrapper>
+      <AppContent />
     </Router>
   );
 }

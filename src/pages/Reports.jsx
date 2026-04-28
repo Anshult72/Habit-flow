@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { FileText, Download, TrendingUp, Calendar, Zap, Target, Flame, Brain, AlertTriangle, ChevronRight, BarChart3, PieChart } from 'lucide-react';
+import { FileText, Download, TrendingUp, Calendar, Zap, Target, Flame, Brain, AlertTriangle, ChevronRight, BarChart3, PieChart, CheckCircle2 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import {

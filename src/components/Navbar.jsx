@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, ChevronDown, LayoutDashboard, ListChecks, 
   Calendar as CalendarIcon, BarChart3, Sparkles, ArrowRight,
-  Settings, Award, FileText, Trophy, Swords, Users, Rocket
+  Settings, Award, FileText, Trophy, Swords, Users, Rocket, Zap, BookOpen, StickyNote, Heart
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -46,68 +46,12 @@ export default function Navbar() {
       color: '#E85D04'
     },
     { 
-      label: 'Reports', 
-      path: '/app/reports', 
-      icon: FileText, 
-      desc: 'Weekly & monthly summaries',
-      color: '#a855f7'
-    },
-    { 
-      label: 'Matrix', 
-      path: '/tracker/matrix', 
+      label: 'Explore All Features →', 
+      path: '/features', 
       icon: Sparkles, 
-      desc: 'Eisenhower priority system',
-      color: '#FFB347'
-    },
-    { 
-      label: 'Missions', 
-      path: '/tracker/mission-countdown', 
-      icon: Rocket, 
-      desc: 'Long-term goal tracking',
-      color: '#FF6B2C'
-    },
-    { 
-      label: 'Focus Zone', 
-      path: '/tracker/focus-zone', 
-      icon: Zap, 
-      desc: 'Deep work command center',
-      color: '#E85D04'
-    },
-    { 
-      label: 'Achievements', 
-      path: '/app/achievements', 
-      icon: Award, 
-      desc: 'Trophies and milestones',
-      color: '#FF6B2C'
-    },
-    { 
-      label: 'Leaderboard', 
-      path: '/app/leaderboard', 
-      icon: Trophy, 
-      desc: 'Global productivity rankings',
-      color: '#E85D04'
-    },
-    { 
-      label: 'Duels', 
-      path: '/app/duels', 
-      icon: Swords, 
-      desc: '1v1 consistency trials',
-      color: '#ef4444'
-    },
-    { 
-      label: 'Squads', 
-      path: '/app/squads', 
-      icon: Users, 
-      desc: 'Team synchronization bonuses',
-      color: '#3b82f6'
-    },
-    { 
-      label: 'Settings', 
-      path: '/app/settings', 
-      icon: Settings, 
-      desc: 'Configure your experience',
-      color: '#FFB347'
-    },
+      desc: 'Discover the full ecosystem',
+      color: '#a855f7'
+    }
   ];
 
   const otherLinks = [

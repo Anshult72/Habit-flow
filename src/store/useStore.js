@@ -14,6 +14,17 @@ const useStore = create(
       onboardingDay: 1, // 1-7 day journey
       lastOnboardingUpdate: new Date().toISOString(),
 
+      selectedMonth: new Date().getMonth(),
+      selectedYear: new Date().getFullYear(),
+      setSelectedMonth: (selectedMonth) => set({ selectedMonth }),
+      setSelectedYear: (selectedYear) => set({ selectedYear }),
+
+      notes: {}, 
+      setNote: (date, content) => set((state) => ({ notes: { ...state.notes, [date]: content } })),
+
+      screenTime: {}, 
+      setScreenTime: (date, hours) => set((state) => ({ screenTime: { ...state.screenTime, [date]: hours } })),
+
       // XP History for Stats
       xpHistory: [], // Array of { date: 'YYYY-MM-DD', amount: 15 }
 
@@ -46,7 +57,136 @@ const useStore = create(
       // Matrix System
       matrixTasks: [], // Array of { id, title, desc, quadrant, completed, dueDate, tags }
 
+      // Learning Hub System
+      subjects: [], // Array of { id, title, category, progress, chapters: [], totalHours, streak, lastStudied, xpEarned }
+
+      // Memo System
+      memos: [], // Array of { id, title, content, category, color, isPinned, priority, createdAt }
+
+      // Wishlist System
+      wishlist: [], // Array of { id, title, price, targetPrice, currentSavings, category, link, image, deadline, status: 'Pending' | 'Acquired', createdAt }
+
       // Actions
+      addWishlistItem: (item) => set((state) => ({
+        wishlist: [{
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          currentSavings: 0,
+          status: 'Pending',
+          ...item
+        }, ...state.wishlist]
+      })),
+
+      updateWishlistItem: (id, updatedItem) => set((state) => ({
+        wishlist: state.wishlist.map((item) => (item.id === id ? { ...item, ...updatedItem } : item)),
+      })),
+
+      deleteWishlistItem: (id) => set((state) => ({
+        wishlist: state.wishlist.filter((item) => item.id !== id),
+      })),
+
+      updateSavings: (id, amount) => set((state) => ({
+        wishlist: state.wishlist.map((item) => {
+          if (item.id === id) {
+            const newSavings = Math.min(item.targetPrice, item.currentSavings + amount);
+            return { 
+              ...item, 
+              currentSavings: newSavings,
+              status: newSavings >= item.targetPrice ? 'Acquired' : item.status
+            };
+          }
+          return item;
+        }),
+      })),
+
+      addMemo: (memo) => set((state) => ({
+        memos: [{
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          isPinned: false,
+          priority: 'Low',
+          color: '#FF6B2C',
+          ...memo
+        }, ...state.memos]
+      })),
+
+      updateMemo: (id, updatedMemo) => set((state) => ({
+        memos: state.memos.map((m) => (m.id === id ? { ...m, ...updatedMemo } : m)),
+      })),
+
+      deleteMemo: (id) => set((state) => ({
+        memos: state.memos.filter((m) => m.id !== id),
+      })),
+
+      togglePinMemo: (id) => set((state) => ({
+        memos: state.memos.map((m) => (m.id === id ? { ...m, isPinned: !m.isPinned } : m)),
+      })),
+
+      addSubject: (subject) => set((state) => ({
+        subjects: [...state.subjects, {
+          id: crypto.randomUUID(),
+          progress: 0,
+          chapters: [],
+          totalHours: 0,
+          streak: 0,
+          lastStudied: null,
+          xpEarned: 0,
+          ...subject
+        }]
+      })),
+
+      updateSubject: (id, updatedSubject) => set((state) => ({
+        subjects: state.subjects.map((s) => (s.id === id ? { ...s, ...updatedSubject } : s)),
+      })),
+
+      deleteSubject: (id) => set((state) => ({
+        subjects: state.subjects.filter((s) => s.id !== id),
+      })),
+
+      addChapter: (subjectId, chapter) => set((state) => ({
+        subjects: state.subjects.map((s) => 
+          s.id === subjectId 
+            ? { ...s, chapters: [...s.chapters, { id: crypto.randomUUID(), status: 'Not Started', notes: '', bookmarks: [], resources: [], ...chapter }] } 
+            : s
+        )
+      })),
+
+      updateChapter: (subjectId, chapterId, updatedChapter) => set((state) => ({
+        subjects: state.subjects.map((s) => 
+          s.id === subjectId 
+            ? { ...s, chapters: s.chapters.map(c => c.id === chapterId ? { ...c, ...updatedChapter } : c) } 
+            : s
+        )
+      })),
+
+      toggleChapterStatus: (subjectId, chapterId) => {
+        const state = get();
+        const subject = state.subjects.find(s => s.id === subjectId);
+        const chapter = subject?.chapters.find(c => c.id === chapterId);
+        
+        if (!chapter) return;
+
+        const newStatus = chapter.status === 'Completed' ? 'Not Started' : 'Completed';
+        const xpReward = newStatus === 'Completed' ? 100 : -100;
+
+        set((state) => ({
+          subjects: state.subjects.map((s) => {
+            if (s.id === subjectId) {
+              const updatedChapters = s.chapters.map(c => 
+                c.id === chapterId ? { ...c, status: newStatus } : c
+              );
+              const completedCount = updatedChapters.filter(c => c.status === 'Completed').length;
+              const progress = updatedChapters.length > 0 ? Math.round((completedCount / updatedChapters.length) * 100) : 0;
+              
+              return { ...s, chapters: updatedChapters, progress, xpEarned: s.xpEarned + xpReward };
+            }
+            return s;
+          })
+        }));
+
+        get().addXP(xpReward);
+      },
+
       addHabit: (habit) => set((state) => ({ 
         habits: [...state.habits, { ...habit, difficulty: habit.difficulty || 'Medium' }] 
       })),

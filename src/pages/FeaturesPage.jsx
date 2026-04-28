@@ -42,40 +42,46 @@ export default function FeaturesPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { 
-                title: 'Interactive Matrix', 
-                icon: Zap, 
-                desc: 'A multi-dimensional view of your daily routines and energy levels.',
-                color: 'from-[#FF6B2C] to-[#FF8C42]'
-              },
-              { 
-                title: 'Smart Progression', 
-                icon: Award, 
-                desc: 'Level up your productivity with built-in achievement mechanics and RPG-style growth.',
-                color: 'from-[#FF8C42] to-[#FFB347]'
-              },
-              { 
-                title: 'Cinematic Analytics', 
+                title: 'Core Tracking', 
                 icon: Activity, 
-                desc: 'Visualize your growth with stunning, interactive data landscapes and heatmaps.',
-                color: 'from-[#E85D04] to-[#FF6B2C]'
+                desc: 'Dashboard, Habits, Calendar, and Analytics. Your daily productivity tracking engine.',
+                color: 'from-[#FF6B2C] to-[#FF8C42]',
+                modules: ['Dashboard', 'Habits', 'Calendar', 'Analytics', 'Reports']
               },
               { 
-                title: 'Focus Engine', 
+                title: 'Focus System', 
+                icon: Zap, 
+                desc: 'Deep work execution. Pomodoro timers, Stopwatches, and the Eisenhower Matrix.',
+                color: 'from-[#FF8C42] to-[#FFB347]',
+                modules: ['Focus Zone', 'Pomodoro', 'Timer', 'Stopwatch', 'Matrix']
+              },
+              { 
+                title: 'Life Operating System', 
                 icon: Target, 
-                desc: 'Integrated Pomodoro and deep work timers to protect your concentration.',
-                color: 'from-[#FF6B2C] to-[#E85D04]'
+                desc: 'Long-term life optimization. Mission countdowns, learning hubs, and vision boards.',
+                color: 'from-[#E85D04] to-[#FF6B2C]',
+                modules: ['Missions', 'Wishlist', 'Learning Hub', 'Memo', 'Vision Board']
               },
               { 
-                title: 'Dynamic Streaks', 
+                title: 'Social & Gamification', 
                 icon: Flame, 
-                desc: 'Smart streak protection and momentum building algorithms.',
-                color: 'from-[#FFB347] to-[#FF8C42]'
+                desc: 'Motivation and engagement. Compete on leaderboards, run duels, and join squads.',
+                color: 'from-[#FF6B2C] to-[#E85D04]',
+                modules: ['Leaderboard', 'Duels', 'Squads', 'Achievements']
+              },
+              { 
+                title: 'Control Panel', 
+                icon: Shield, 
+                desc: 'Personalization and control. Custom themes, notifications, and preferences.',
+                color: 'from-[#FFB347] to-[#FF8C42]',
+                modules: ['Settings', 'Themes', 'Notifications', 'Account']
               },
               { 
                 title: 'Global Sync', 
                 icon: Globe, 
                 desc: 'Seamless real-time synchronization across all your high-performance devices.',
-                color: 'from-[#FF8C42] to-[#FF6B2C]'
+                color: 'from-[#FF8C42] to-[#FF6B2C]',
+                modules: ['Cloud Sync', 'Real-time', 'Multi-device', 'Secure']
               },
             ].map((feature, i) => (
               <motion.div 
@@ -92,7 +98,14 @@ export default function FeaturesPage() {
                    </div>
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-4">{feature.title}</h3>
-                <p className="text-textMuted leading-relaxed">{feature.desc}</p>
+                <p className="text-textMuted leading-relaxed mb-6">{feature.desc}</p>
+                <div className="flex flex-wrap gap-2">
+                  {feature.modules.map((mod, idx) => (
+                    <span key={idx} className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-white/70 group-hover:border-[#FF6B2C]/30 transition-colors">
+                      {mod}
+                    </span>
+                  ))}
+                </div>
               </motion.div>
             ))}
           </div>
