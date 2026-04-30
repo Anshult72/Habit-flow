@@ -1,16 +1,43 @@
-# React + Vite
+# HabitFlow | Eagle Productivity OS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+HabitFlow is a premium, cinematic productivity ecosystem built for high-performers. It combines habit tracking, task management, focus systems, and life organization into a unified, high-fidelity experience.
 
-Currently, two official plugins are available:
+## Technology Stack
+- **Framework**: Next.js 16 (App Router)
+- **Styling**: Tailwind CSS 4
+- **Animations**: Framer Motion
+- **State Management**: Zustand
+- **Database**: Firebase (Firestore + Auth)
+- **Icons**: Lucide React
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Key Features
+- **Productivity OS**: Immersive dashboard with real-time metrics.
+- **Focus System**: Pomodoro, Stopwatch, and Eisenhower Matrix.
+- **Life OS**: Missions, Wishlist, Memo Hub, and Learning Tracker.
+- **Gamification**: XP system, Levels, Duels, and Achievements.
+- **Neural Core**: Sequential cinematic onboarding and intelligent flow.
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+First, install dependencies:
+```bash
+npm install
+```
 
-## Expanding the ESLint configuration
+Then, run the development server:
+```bash
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Project Structure
+- `app/`: Routing and layouts.
+- `components/`: Reusable UI components.
+- `lib/`: Utilities and API integrations.
+- `store/`: Centralized state management.
+- `public/`: Static assets and textures.
+
+## Finalized Migration
+This project was successfully migrated from a Vite-based React application to Next.js App Router for enhanced performance and modern architecture.
+
