@@ -17,6 +17,7 @@ const navGroups = [
     title: 'CORE TRACKING',
     items: [
       { label: 'Dashboard', path: '/app', icon: LayoutDashboard },
+      { label: 'Daily Planner', path: '/app/planner', icon: Calendar },
       { label: 'Habits', path: '/app/habits', icon: ListChecks },
       { label: 'Calendar', path: '/app/calendar', icon: Calendar },
       { label: 'Analytics', path: '/app/analytics', icon: BarChart3 },
@@ -38,6 +39,7 @@ const navGroups = [
       { label: 'Missions', path: '/app/missions', icon: Rocket },
       { label: 'Wishlist', path: '/app/wishlist', icon: Heart },
       { label: 'Learning Hub', path: '/app/learning', icon: BookOpen },
+      { label: 'Resources', path: '/app/resources', icon: FileText },
       { label: 'Memo', path: '/app/memo', icon: StickyNote },
       { label: 'Vision Board', path: '/app/vision-board', icon: Image },
     ]

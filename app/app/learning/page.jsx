@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { 
   BookOpen, Search, Filter, Plus, Rocket, 
@@ -156,13 +157,12 @@ export default function LearningHub() {
 
           <AnimatePresence mode="popLayout">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredSubjects.map((subject, i) => (
+              {filteredSubjects.map((s, i) => (
                 <SubjectCard 
-                  key={subject.id} 
-                  subject={subject} 
+                  key={s.id} 
+                  subject={s} 
                   index={i} 
-                  onOpen={() => setSelectedSubject(subject)}
-                  onDelete={() => deleteSubject(subject.id)}
+                  onDelete={() => deleteSubject(s.id)}
                 />
               ))}
 
@@ -193,7 +193,6 @@ export default function LearningHub() {
         </div>
       </div>
 
-      {/* Overlays */}
       <AnimatePresence>
         {isModalOpen && (
           <CreateSubjectModal 
@@ -201,27 +200,14 @@ export default function LearningHub() {
             onAdd={addSubject}
           />
         )}
-        {selectedSubject && (
-          <SubjectDetailsOverlay 
-            subject={selectedSubject} 
-            onClose={() => setSelectedSubject(null)}
-            onToggleChapter={(chapterId) => toggleChapterStatus(selectedSubject.id, chapterId)}
-            onDeepStudy={(chapterId) => setDeepStudyId(chapterId)}
-          />
-        )}
-        {deepStudyId && (
-          <DeepStudyMode 
-            chapter={selectedSubject.chapters.find(c => c.id === deepStudyId)}
-            subject={selectedSubject}
-            onClose={() => setDeepStudyId(null)}
-          />
-        )}
       </AnimatePresence>
     </div>
   );
 }
 
-function SubjectCard({ subject, index, onOpen, onDelete }) {
+function SubjectCard({ subject, index, onDelete }) {
+  const router = useRouter();
+
   return (
     <motion.div
       layout
@@ -247,7 +233,7 @@ function SubjectCard({ subject, index, onOpen, onDelete }) {
               {subject.chapters?.length || 0} Modules Detected
             </p>
           </div>
-          <button onClick={onDelete} className="p-2 text-white/10 hover:text-red-500 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 text-white/10 hover:text-red-500 transition-colors">
             <Trash2 size={16} />
           </button>
         </div>
@@ -283,7 +269,7 @@ function SubjectCard({ subject, index, onOpen, onDelete }) {
             <span className="text-[10px] font-black uppercase tracking-widest text-[#FFD700]">+{subject.xpEarned} XP</span>
           </div>
           <button 
-            onClick={onOpen}
+            onClick={() => router.push(`/app/learning/${subject.id}`)}
             className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-white hover:text-[#FF6B2C] transition-all group/btn"
           >
             Launch System <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
@@ -293,138 +279,6 @@ function SubjectCard({ subject, index, onOpen, onDelete }) {
     </motion.div>
   );
 }
-
-function SubjectDetailsOverlay({ subject, onClose, onToggleChapter, onDeepStudy }) {
-  const [filter, setFilter] = useState('All');
-  const filteredChapters = (subject.chapters || []).filter(c => filter === 'All' || c.status === filter);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl"
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-6xl h-[85vh] glass-card rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(255,107,44,0.15)] overflow-hidden flex flex-col"
-      >
-        {/* Close Button */}
-        <button 
-          onClick={onClose}
-          className="absolute top-8 right-8 z-50 p-4 rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-white transition-all"
-        >
-          <X size={24} />
-        </button>
-
-        {/* Content */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
-          <div className="p-12 pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-white/5">
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FF6B2C]/10 border border-[#FF6B2C]/20 text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest">
-                <Target size={12} /> Target Progress
-              </div>
-              <h2 className="text-4xl md:text-5xl font-display font-black text-white">{subject.title}</h2>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2 text-text-muted text-sm font-medium">
-                  <Clock size={16} /> {subject.totalHours}h Studied
-                </div>
-                <div className="flex items-center gap-2 text-[#FFD700] text-sm font-black uppercase tracking-widest">
-                  <Flame size={16} /> {subject.streak}d Streak
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 bg-white/5 p-1 rounded-xl">
-              {['All', 'Not Started', 'In Progress', 'Completed'].map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                    filter === f ? 'bg-[#FF6B2C] text-white' : 'text-white/40 hover:text-white/60'
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-12 pt-8 space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              {filteredChapters.map((chapter, i) => (
-                <motion.div
-                  key={chapter.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className={`group relative flex items-center justify-between p-6 rounded-2xl border transition-all duration-500 ${
-                    chapter.status === 'Completed' 
-                      ? 'bg-success/5 border-success/20' 
-                      : 'bg-white/5 border-white/5 hover:border-[#FF6B2C]/30 hover:bg-[#FF6B2C]/5'
-                  }`}
-                >
-                  <div className="flex items-center gap-6">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-display font-bold text-xl ${
-                      chapter.status === 'Completed' ? 'bg-success text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-white/5 text-white/40 group-hover:text-white'
-                    }`}>
-                      {i + 1}
-                    </div>
-                    <div>
-                      <h4 className={`text-lg font-bold transition-all ${chapter.status === 'Completed' ? 'text-success/70 line-through' : 'text-white'}`}>
-                        {chapter.title}
-                      </h4>
-                      <div className="flex items-center gap-4 mt-1">
-                        <span className="text-[10px] text-text-muted uppercase font-bold tracking-widest flex items-center gap-1">
-                          <Clock size={12} /> {chapter.duration}
-                        </span>
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${
-                          chapter.status === 'Completed' ? 'text-success' : chapter.status === 'In Progress' ? 'text-warning' : 'text-white/20'
-                        }`}>
-                          {chapter.status}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white">
-                        <FileText size={18} />
-                      </button>
-                      <button className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white">
-                        <BookMarked size={18} />
-                      </button>
-                    </div>
-                    <button 
-                      onClick={() => onDeepStudy(chapter.id)}
-                      className="px-4 py-2 rounded-lg bg-[#FF6B2C]/10 border border-[#FF6B2C]/30 text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:bg-[#FF6B2C] hover:text-white transition-all flex items-center gap-2"
-                    >
-                      <Zap size={14} /> Focus
-                    </button>
-                    <button 
-                      onClick={() => onToggleChapter(chapter.id)}
-                      className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
-                        chapter.status === 'Completed' 
-                          ? 'bg-success border-success text-white' 
-                          : 'bg-white/5 border-white/10 text-white/20 hover:border-success/50 hover:text-success'
-                      }`}
-                    >
-                      <CheckCircle2 size={20} />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 function CreateSubjectModal({ onClose, onAdd }) {
   const [formData, setFormData] = useState({
     title: '',
@@ -437,7 +291,7 @@ function CreateSubjectModal({ onClose, onAdd }) {
     if (!chapterInput.title) return;
     setFormData({
       ...formData,
-      chapters: [...formData.chapters, { ...chapterInput, id: Math.random().toString(36).substr(2, 9), status: 'Not Started' }]
+      chapters: [...formData.chapters, { ...chapterInput, id: Math.random().toString(36).substr(2, 9), status: 'Not Started', topics: [], progress: 0 }]
     });
     setChapterInput({ title: '', duration: '45m' });
   };
@@ -551,93 +405,5 @@ function CreateSubjectModal({ onClose, onAdd }) {
         </div>
       </motion.div>
     </div>
-  );
-}
-
-function DeepStudyMode({ chapter, subject, onClose }) {
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isActive, setIsActive] = useState(false);
-
-  useEffect(() => {
-    let interval = null;
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    } else if (timeLeft === 0) {
-      setIsActive(false);
-    }
-    return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
-
-  const m = Math.floor(timeLeft / 60);
-  const s = timeLeft % 60;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[2000] bg-black flex flex-col items-center justify-center overflow-hidden"
-    >
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#FF6B2C]/10 via-transparent to-black" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-10">
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.2, 1],
-              opacity: [0.3, 0.5, 0.3]
-            }}
-            transition={{ duration: 15, repeat: Infinity }}
-            className="w-full h-full border-[1px] border-[#FF6B2C] rounded-full blur-[100px]"
-          />
-        </div>
-      </div>
-
-      <button 
-        onClick={onClose}
-        className="absolute top-10 right-10 z-50 p-4 rounded-full border border-white/10 text-white/20 hover:text-white transition-all group"
-      >
-        <Maximize2 size={32} className="group-hover:rotate-90 transition-transform" />
-      </button>
-
-      <div className="relative z-10 w-full max-w-5xl px-6 text-center space-y-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-[#FF6B2C]/20 border border-[#FF6B2C]/40 text-[#FF8C42] font-black uppercase tracking-[0.4em] text-xs">
-            <Sparkles size={16} /> Deep Study Protocol Active
-          </div>
-          <p className="text-xl text-white/40 font-bold uppercase tracking-widest">{subject.title}</p>
-          <h2 className="text-6xl md:text-8xl font-display font-black tracking-tighter text-white">
-            {chapter?.title}
-          </h2>
-        </motion.div>
-
-        <div className="space-y-8">
-          <p className="text-8xl md:text-[10rem] font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-[#FF6B2C]/20 tracking-tighter">
-            {String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}
-          </p>
-          <div className="flex justify-center gap-6">
-            <button 
-              onClick={() => setIsActive(!isActive)}
-              className="px-12 py-5 rounded-2xl bg-[#FF6B2C] text-white font-black uppercase tracking-widest shadow-[0_10px_40px_rgba(255,107,44,0.3)] hover:scale-105 transition-all"
-            >
-              {isActive ? 'Pause Flow' : 'Initiate Session'}
-            </button>
-            <button 
-              onClick={() => setTimeLeft(25 * 60)}
-              className="p-5 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white transition-all"
-            >
-              <RotateCcw size={24} />
-            </button>
-          </div>
-        </div>
-
-        <div className="pt-12 text-white/20 italic font-light text-2xl max-w-2xl mx-auto">
-          "The object of opening the mind, as of opening the mouth, is to shut it again on something solid."
-        </div>
-      </div>
-    </motion.div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Play, Sparkles, Activity, Zap, Shield, CheckCircle2, TrendingUp, Users, Globe, LayoutGrid, Rocket, Flame } from 'lucide-react';
+import { ArrowRight, Play, Sparkles, Activity, Zap, Shield, CheckCircle2, TrendingUp, Users, Globe, LayoutGrid, Rocket, Flame, Calendar } from 'lucide-react';
 
 const WORDS = [
   'Consistency',
@@ -86,7 +86,7 @@ function HeroTypingAnimation() {
         {!isLine1Done && (
           <motion.span
             animate={{ opacity: [1, 0] }}
-            transition={{ duration: 0.8, repeat: Infinity, ease: "steps(2)" }}
+            transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
             className="inline-block w-[4px] h-[0.8em] bg-[#FF6B2C] ml-2 shadow-[0_0_15px_#FF6B2C]"
           />
         )}
@@ -96,7 +96,7 @@ function HeroTypingAnimation() {
         {isLine1Done && !isLine2Done && (
           <motion.span
             animate={{ opacity: [1, 0] }}
-            transition={{ duration: 0.8, repeat: Infinity, ease: "steps(2)" }}
+            transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
             className="inline-block w-[4px] h-[0.8em] bg-[#FF6B2C] ml-2 shadow-[0_0_15px_#FF6B2C]"
           />
         )}
@@ -328,20 +328,24 @@ export default function Landing() {
                 with a cinematic focus to keep you engaged and consistent.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 w-full">
                 {[
                   { title: 'Strategic Matrix', desc: 'Prioritize tasks with our 2x2 Eisenhower system.', icon: LayoutGrid },
                   { title: 'Goal Missions', desc: 'Set long-term life milestones with live countdowns.', icon: Rocket },
-                  { title: 'Deep Focus Zone', desc: 'Immersive timers and analytics for peak flow.', icon: Zap }
-                ].map((f, i) => (
-                  <div key={i} className="glass-card p-10 rounded-[2.5rem] border-white/5 text-left hover:border-[#FF6B2C]/20 transition-all">
-                    <div className="w-14 h-14 rounded-2xl bg-[#FF6B2C]/10 flex items-center justify-center text-[#FF6B2C] mb-8">
-                      <f.icon size={28} />
+                  { title: 'Deep Focus Zone', desc: 'Immersive timers and analytics for peak flow.', icon: Zap },
+                  { title: 'Daily Planner', desc: 'Plan your entire day with structured time blocks and stay in control.', icon: Calendar }
+                ].map((f, i) => {
+                  const Icon = f.icon;
+                  return (
+                    <div key={i} className="glass-card p-10 rounded-[2.5rem] border-white/5 text-left hover:border-[#FF6B2C]/20 transition-all group/feat">
+                      <div className="w-14 h-14 rounded-2xl bg-[#FF6B2C]/10 flex items-center justify-center text-[#FF6B2C] mb-8 group-hover/feat:bg-[#FF6B2C] group-hover/feat:text-white transition-all">
+                        <Icon size={28} />
+                      </div>
+                      <h3 className="text-2xl font-bold text-white mb-4">{f.title}</h3>
+                      <p className="text-text-muted leading-relaxed text-sm">{f.desc}</p>
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-4">{f.title}</h3>
-                    <p className="text-text-muted leading-relaxed">{f.desc}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

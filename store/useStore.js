@@ -151,7 +151,14 @@ const useStore = create(
       addChapter: (subjectId, chapter) => set((state) => ({
         subjects: state.subjects.map((s) => 
           s.id === subjectId 
-            ? { ...s, chapters: [...s.chapters, { id: crypto.randomUUID(), status: 'Not Started', notes: '', bookmarks: [], resources: [], ...chapter }] } 
+            ? { ...s, chapters: [...(s.chapters || []), { 
+                id: crypto.randomUUID(), 
+                status: 'Not Started', 
+                topics: [],
+                progress: 0,
+                notes: '', 
+                ...chapter 
+              }] } 
             : s
         )
       })),
@@ -164,32 +171,94 @@ const useStore = create(
         )
       })),
 
-      toggleChapterStatus: (subjectId, chapterId) => {
-        const state = get();
-        const subject = state.subjects.find(s => s.id === subjectId);
-        const chapter = subject?.chapters.find(c => c.id === chapterId);
-        
-        if (!chapter) return;
+      deleteChapter: (subjectId, chapterId) => set((state) => ({
+        subjects: state.subjects.map((s) => 
+          s.id === subjectId 
+            ? { ...s, chapters: s.chapters.filter(c => c.id !== chapterId) } 
+            : s
+        )
+      })),
 
-        const newStatus = chapter.status === 'Completed' ? 'Not Started' : 'Completed';
-        const xpReward = newStatus === 'Completed' ? 100 : -100;
+      addTopic: (subjectId, chapterId, topic) => set((state) => ({
+        subjects: state.subjects.map((s) => {
+          if (s.id === subjectId) {
+            const updatedChapters = s.chapters.map(c => 
+              c.id === chapterId 
+                ? { ...c, topics: [...(c.topics || []), { id: crypto.randomUUID(), title: topic.title, status: 'Not Started' }] } 
+                : c
+            );
+            return { ...s, chapters: updatedChapters };
+          }
+          return s;
+        })
+      })),
 
-        set((state) => ({
-          subjects: state.subjects.map((s) => {
+      updateTopic: (subjectId, chapterId, topicId, updatedTopic) => set((state) => ({
+        subjects: state.subjects.map((s) => {
+          if (s.id === subjectId) {
+            const updatedChapters = s.chapters.map(c => 
+              c.id === chapterId 
+                ? { ...c, topics: c.topics.map(t => t.id === topicId ? { ...t, ...updatedTopic } : t) } 
+                : c
+            );
+            return { ...s, chapters: updatedChapters };
+          }
+          return s;
+        })
+      })),
+
+      deleteTopic: (subjectId, chapterId, topicId) => set((state) => ({
+        subjects: state.subjects.map((s) => {
+          if (s.id === subjectId) {
+            const updatedChapters = s.chapters.map(c => 
+              c.id === chapterId 
+                ? { ...c, topics: c.topics.filter(t => t.id !== topicId) } 
+                : c
+            );
+            return { ...s, chapters: updatedChapters };
+          }
+          return s;
+        })
+      })),
+
+      toggleTopicStatus: (subjectId, chapterId, topicId) => {
+        set((state) => {
+          const newSubjects = state.subjects.map((s) => {
             if (s.id === subjectId) {
-              const updatedChapters = s.chapters.map(c => 
-                c.id === chapterId ? { ...c, status: newStatus } : c
-              );
-              const completedCount = updatedChapters.filter(c => c.status === 'Completed').length;
-              const progress = updatedChapters.length > 0 ? Math.round((completedCount / updatedChapters.length) * 100) : 0;
-              
-              return { ...s, chapters: updatedChapters, progress, xpEarned: s.xpEarned + xpReward };
+              const updatedChapters = s.chapters.map((c) => {
+                if (c.id === chapterId) {
+                  const updatedTopics = c.topics.map((t) => {
+                    if (t.id === topicId) {
+                      const statusMap = { 'Not Started': 'In Progress', 'In Progress': 'Completed', 'Completed': 'Not Started' };
+                      return { ...t, status: statusMap[t.status] || 'Not Started' };
+                    }
+                    return t;
+                  });
+
+                  // Recalculate Chapter Status & Progress
+                  const completedTopics = updatedTopics.filter(t => t.status === 'Completed').length;
+                  const chapterProgress = updatedTopics.length > 0 ? Math.round((completedTopics / updatedTopics.length) * 100) : 0;
+                  
+                  let chapterStatus = 'Not Started';
+                  if (chapterProgress === 100) chapterStatus = 'Completed';
+                  else if (chapterProgress > 0 || updatedTopics.some(t => t.status === 'In Progress')) chapterStatus = 'In Progress';
+
+                  return { ...c, topics: updatedTopics, progress: chapterProgress, status: chapterStatus };
+                }
+                return c;
+              });
+
+              // Recalculate Subject Progress
+              const totalChapters = updatedChapters.length;
+              const sumProgress = updatedChapters.reduce((acc, curr) => acc + (curr.progress || 0), 0);
+              const subjectProgress = totalChapters > 0 ? Math.round(sumProgress / totalChapters) : 0;
+
+              return { ...s, chapters: updatedChapters, progress: subjectProgress };
             }
             return s;
-          })
-        }));
-
-        get().addXP(xpReward);
+          });
+          return { subjects: newSubjects };
+        });
       },
 
       addHabit: (habit) => set((state) => ({ 
