@@ -1,0 +1,239 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String   @id @default(cuid())
+  supabaseId            String?  @unique
+  name                  String?
+  email                 String?  @unique
+  avatarUrl             String?
+  xp                    Int      @default(0)
+  level                 Int      @default(1)
+  streakShields         Int      @default(2)
+  onboardingDay         Int      @default(1)
+  lastOnboardingUpdate  DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  habits                Habit[]
+  focusSessions         FocusSession[]
+  missions              Mission[]
+  matrixTasks           MatrixTask[]
+  plannerDays           PlannerDay[]
+  subjects              Subject[]
+  memos                 Memo[]
+  wishlist              WishlistItem[]
+  xpHistory             XPLog[]
+}
+
+model Habit {
+  id          String   @id @default(cuid())
+  title       String
+  color       String   @default("#FF6B2C")
+  icon        String   @default("Zap")
+  frequency   String   @default("Daily")
+  difficulty  String   @default("Medium")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  completions HabitCompletion[]
+}
+
+model HabitCompletion {
+  id        String   @id @default(cuid())
+  date      String   // YYYY-MM-DD
+  completed Boolean  @default(true)
+
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+}
+
+model FocusSession {
+  id          String   @id @default(cuid())
+  type        String
+  duration    Int
+  date        DateTime @default(now())
+  xpEarned    Int
+  rating      Int?
+  createdAt   DateTime @default(now())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Mission {
+  id              String   @id @default(cuid())
+  title           String
+  desc            String?
+  category        String?
+  targetDate      DateTime?
+  priority        String   @default("Medium")
+  motivationQuote String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MatrixTask {
+  id          String   @id @default(cuid())
+  title       String
+  desc        String?
+  quadrant    Int      // 1: Urgent/Important, 2: Not Urgent/Important, etc.
+  completed   Boolean  @default(false)
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PlannerDay {
+  id        String   @id @default(cuid())
+  date      String   // YYYY-MM-DD
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slots     PlannerSlot[]
+
+  @@unique([userId, date])
+}
+
+model PlannerSlot {
+  id          String   @id @default(cuid())
+  timeRange   String   // e.g., "6 AM – 9 AM"
+  dayId       String
+  day         PlannerDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  tasks       PlannerTask[]
+
+  @@unique([dayId, timeRange])
+}
+
+model PlannerTask {
+  id          String   @id @default(cuid())
+  title       String
+  completed   Boolean  @default(false)
+  order       Int      @default(0)
+  slotId      String
+  slot        PlannerSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  title       String
+  category    String?
+  progress    Int      @default(0)
+  totalHours  Float    @default(0)
+  streak      Int      @default(0)
+  lastStudied DateTime?
+  xpEarned    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  chapters    Chapter[]
+}
+
+model Chapter {
+  id        String   @id @default(cuid())
+  title     String
+  status    String   @default("Not Started")
+  progress  Int      @default(0)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  topics    Topic[]
+}
+
+model Topic {
+  id        String   @id @default(cuid())
+  title     String
+  status    String   @default("Not Started")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+}
+
+model Memo {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  category  String?
+  color     String   @default("#FF6B2C")
+  isPinned  Boolean  @default(false)
+  priority  String   @default("Low")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WishlistItem {
+  id             String   @id @default(cuid())
+  title          String
+  price          Float
+  targetPrice    Float
+  currentSavings Float    @default(0)
+  category       String?
+  link           String?
+  image          String?
+  deadline       DateTime?
+  status         String   @default("Pending")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Resource {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  content     String?  @db.Text
+  image       String?
+  category    String?
+  type        String   @default("article") // article, update
+  slug        String?  @unique
+  readTime    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model XPLog {
+  id        String   @id @default(cuid())
+  date      String   // YYYY-MM-DD
+  amount    Int
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
