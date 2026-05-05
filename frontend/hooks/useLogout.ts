@@ -17,7 +17,7 @@ export function useLogout() {
     try {
       await signOut();
       setUser(null);
-      router.replace('/auth');
+      router.replace('/login');
       toast.success('Session terminated.', { icon: '👋' });
     } catch (err: any) {
       toast.error(err?.message || 'Logout failed.');

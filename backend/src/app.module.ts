@@ -15,6 +15,10 @@ import { MemoModule } from './modules/memo/memo.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { MissionsModule } from './modules/missions/missions.module';
 import { ResourcesModule } from './modules/resources/resources.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { DuelsModule } from './modules/duels/duels.module';
+import { SquadsModule } from './modules/squads/squads.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -34,6 +38,10 @@ import { ResourcesModule } from './modules/resources/resources.module';
     WishlistModule,
     MissionsModule,
     ResourcesModule,
+    AnalyticsModule,
+    DuelsModule,
+    SquadsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

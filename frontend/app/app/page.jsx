@@ -17,7 +17,7 @@ export default function Dashboard() {
   const { 
     habits, completions, toggleCompletion, xp, level, 
     streakShields, onboardingDay, useShield, advanceOnboarding, getStats, getStreak,
-    matrixTasks, missions, memos, isHydrated
+    matrixTasks, missions, memos, isHydrated, productivityScore
   } = useStore();
   const router = useRouter();
 
@@ -80,11 +80,11 @@ export default function Dashboard() {
   const stats = [
     { label: 'Total XP', value: xp, icon: Zap, color: 'text-[#FF6B2C]', glow: 'shadow-[0_0_20px_rgba(255,107,44,0.2)]' },
     { label: 'Streak Shields', value: streakShields, icon: Shield, color: 'text-blue-400', glow: 'shadow-[0_0_20px_rgba(96,165,250,0.2)]' },
-    { label: 'Productivity', value: `${Math.round(progress)}%`, icon: Target, color: 'text-success', glow: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]' },
+    { label: 'Productivity', value: `${productivityScore}%`, icon: Target, color: 'text-success', glow: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]' },
   ];
 
   const circumference = 2 * Math.PI * 40;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
+  const strokeDashoffset = circumference - (productivityScore / 100) * circumference;
 
   if (!isHydrated) {
     return (
@@ -201,28 +201,35 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            <div className="space-y-4">
-              {habits.map((habit, index) => {
-                const isCompleted = completions[`${habit.id}-${todayStr}`];
-                const difficultyXp = { Easy: 10, Medium: 25, Hard: 50, Elite: 100 };
-                return (
-                  <motion.div key={habit.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + index * 0.1 }} onClick={() => handleToggle(habit)} className={`flex items-center gap-6 p-5 md:p-6 rounded-2xl cursor-pointer transition-all border group/habit ${isCompleted ? 'bg-[#FF6B2C]/5 border-[#FF6B2C]/40 shadow-[inset_0_0_30px_rgba(255,107,44,0.05)]' : 'bg-white/[0.01] border-white/5 hover:border-white/20'}`}>
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-500 ${isCompleted ? 'bg-[#FF6B2C] border-[#FF6B2C] shadow-[0_0_20px_rgba(255,107,44,0.6)]' : 'border-2 border-white/10 group-hover/habit:border-[#FF6B2C]/50'}`}>
-                      {isCompleted && <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></motion.svg>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className={`font-bold text-xl truncate transition-all duration-500 ${isCompleted ? 'text-white/40 line-through' : 'text-white'}`}>{habit.name}</h3>
-                        <span className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider transition-colors" style={{ color: getCategoryHexColor(habit.category) }}>{habit.category}</span>
-                        <span className={`px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider ${habit.difficulty === 'Elite' ? 'text-purple-400' : habit.difficulty === 'Hard' ? 'text-orange-400' : 'text-textMuted'}`}>{habit.difficulty} ({difficultyXp[habit.difficulty || 'Medium']} XP)</span>
+            {habits.length > 0 ? (
+              <div className="space-y-4">
+                {habits.map((habit, index) => {
+                  const isCompleted = completions[`${habit.id}-${todayStr}`];
+                  const difficultyXp = { Easy: 10, Medium: 25, Hard: 50, Elite: 100 };
+                  return (
+                    <motion.div key={habit.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + index * 0.1 }} onClick={() => handleToggle(habit)} className={`flex items-center gap-6 p-5 md:p-6 rounded-2xl cursor-pointer transition-all border group/habit ${isCompleted ? 'bg-[#FF6B2C]/5 border-[#FF6B2C]/40 shadow-[inset_0_0_30px_rgba(255,107,44,0.05)]' : 'bg-white/[0.01] border-white/5 hover:border-white/20'}`}>
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-500 ${isCompleted ? 'bg-[#FF6B2C] border-[#FF6B2C] shadow-[0_0_20px_rgba(255,107,44,0.6)]' : 'border-2 border-white/10 group-hover/habit:border-[#FF6B2C]/50'}`}>
+                        {isCompleted && <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></motion.svg>}
                       </div>
-                      <p className="text-xs text-textMuted mt-1 font-medium">{habit.goal} day target cycle</p>
-                    </div>
-                    <div className="w-4 h-4 rounded-full transition-all duration-500 border border-white/10" style={{ backgroundColor: getCategoryHexColor(habit.category), boxShadow: isCompleted ? `0 0 20px ${getCategoryHexColor(habit.category)}` : 'none', opacity: isCompleted ? 1 : 0.3 }} />
-                  </motion.div>
-                );
-              })}
-            </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <h3 className={`font-bold text-xl truncate transition-all duration-500 ${isCompleted ? 'text-white/40 line-through' : 'text-white'}`}>{habit.name || habit.title}</h3>
+                          <span className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider transition-colors" style={{ color: getCategoryHexColor(habit.category) }}>{habit.category}</span>
+                          <span className={`px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider ${habit.difficulty === 'Elite' ? 'text-purple-400' : habit.difficulty === 'Hard' ? 'text-orange-400' : 'text-textMuted'}`}>{habit.difficulty} ({difficultyXp[habit.difficulty || 'Medium']} XP)</span>
+                        </div>
+                        <p className="text-xs text-textMuted mt-1 font-medium">{habit.goal || habit.frequency || 'Daily'} target cycle</p>
+                      </div>
+                      <div className="w-4 h-4 rounded-full transition-all duration-500 border border-white/10" style={{ backgroundColor: getCategoryHexColor(habit.category), boxShadow: isCompleted ? `0 0 20px ${getCategoryHexColor(habit.category)}` : 'none', opacity: isCompleted ? 1 : 0.3 }} />
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-8 rounded-2xl border border-dashed border-white/10 text-center">
+                <p className="text-textMuted font-bold uppercase tracking-widest mb-2">No Habits Found</p>
+                <button onClick={() => router.push('/app/habits')} className="text-[#FF6B2C] hover:text-[#FF8C42] text-sm font-bold transition-colors">Create your first habit</button>
+              </div>
+            )}
           </motion.div>
 
           {/* Quick Actions Widget */}
@@ -345,19 +352,8 @@ export default function Dashboard() {
               </h3>
               <button onClick={() => router.push('/app/learning')} className="text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:underline">Modules</button>
             </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 p-3 rounded-xl bg-white/5 border border-white/10">
-                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <Clock size={18} className="text-purple-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-white mb-1">Advanced React Patterns</p>
-                  <div className="h-1.5 w-full bg-black/50 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-500 w-[45%]" />
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-purple-400">45%</span>
-              </div>
+            <div className="p-6 rounded-xl border border-dashed border-white/10 text-center">
+              <p className="text-[10px] text-textMuted uppercase font-bold tracking-widest">No active modules</p>
             </div>
           </motion.div>
 

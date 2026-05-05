@@ -11,6 +11,7 @@ const useStore = create(
       xp: 0,
       level: 1,
       streakShields: 2,
+      productivityScore: 0,
       onboardingDay: 1, // 1-7 day journey
       lastOnboardingUpdate: new Date().toISOString(),
       user: null,
@@ -37,7 +38,48 @@ const useStore = create(
       setScreenTime: (date, hours) => set((state) => ({ screenTime: { ...state.screenTime, [date]: hours } })),
 
       // XP History for Stats
-      xpHistory: [], // Array of { date: 'YYYY-MM-DD', amount: 15 }
+      xpHistory: [], 
+
+      // Data Synchronization
+      syncData: async () => {
+        try {
+          const { apiFetch } = await import('@/lib/api');
+          const [userRes, habitsRes, analyticsRes, duelsRes, squadsRes] = await Promise.all([
+            apiFetch('/auth/me'),
+            apiFetch('/habits').catch(() => []),
+            apiFetch('/analytics/productivity').catch(() => ({ score: 0 })),
+            apiFetch('/duels').catch(() => []),
+            apiFetch('/squads').catch(() => [])
+          ]);
+          
+          if (userRes?.success && userRes?.user) {
+            set({
+              user: userRes.user,
+              xp: userRes.user.xp || 0,
+              level: userRes.user.level || 1,
+              streakShields: userRes.user.streakShields ?? 2,
+              onboardingDay: userRes.user.onboardingDay || 1,
+            });
+          }
+          
+          if (Array.isArray(habitsRes)) {
+            set({ habits: habitsRes });
+          }
+
+          if (analyticsRes && typeof analyticsRes.score === 'number') {
+            set({ productivityScore: analyticsRes.score });
+          }
+
+          if (Array.isArray(duelsRes)) set({ duels: duelsRes });
+          if (Array.isArray(squadsRes)) set({ squads: squadsRes });
+        } catch (error) {
+          console.error("Failed to sync store data:", error);
+        }
+      },
+
+      // Social Modules
+      duels: [],
+      squads: [],
 
       // Bundles System
       bundles: [
@@ -45,14 +87,6 @@ const useStore = create(
         { id: 'b2', name: 'Deep Work', habits: [], color: '#E85D04', icon: 'Zap' },
       ],
 
-      // Mock Social Data
-      duels: [
-        { id: 'd1', opponent: 'CyberRunner', status: 'Active', playerProgress: 65, opponentProgress: 72, daysLeft: 3 },
-        { id: 'd2', opponent: 'FocusMaster', status: 'Completed', playerProgress: 100, opponentProgress: 88, winner: 'You' },
-      ],
-      squads: [
-        { id: 's1', name: 'Alpha Unit', members: ['You', 'Alex', 'Sarah', 'Mike', 'Elena'], consistency: 92, syncBonusActive: true },
-      ],
 
       // Achievements Logic
       achievements: [],

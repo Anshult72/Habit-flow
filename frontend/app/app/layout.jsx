@@ -5,6 +5,8 @@ import { Bell, User, Flame } from 'lucide-react';
 import MobileDock from '@/components/MobileDock';
 import Sidebar from '@/components/Sidebar';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import ProfileDropdown from '@/components/ProfileDropdown';
+import NotificationDropdown from '@/components/NotificationDropdown';
 import useStore from '@/store/useStore';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -26,8 +28,15 @@ export default function DashboardLayout({ children }) {
       // 1. Check Supabase session
       const session = await getSession();
       if (!session) {
-        router.replace('/auth');
+        router.replace('/login');
         return;
+      }
+
+      // Sync user with backend DB and load initial data
+      try {
+        await useStore.getState().syncData();
+      } catch (e) {
+        console.error('Failed to sync user data:', e);
       }
 
       // 2. Check onboarding completion
@@ -55,17 +64,8 @@ export default function DashboardLayout({ children }) {
             <Flame size={16} className="text-[#FF6B2C]" />
             <span className="text-xs font-bold text-white tracking-widest uppercase">{streak} Day Streak</span>
           </div>
-          <button className="w-10 h-10 rounded-xl bg-surface border border-surfaceBorder flex items-center justify-center hover:bg-surfaceBorder transition-all text-textMuted hover:text-textMain">
-            <Bell size={18} />
-          </button>
-          <button
-            onClick={logout}
-            title="Sign out"
-            className="w-10 h-10 rounded-xl bg-surface border border-surfaceBorder flex items-center justify-center hover:border-red-500/50 transition-all text-textMuted hover:text-red-400 group/user overflow-hidden relative"
-          >
-            <div className="absolute inset-0 bg-red-500/10 opacity-0 group-hover/user:opacity-100 transition-opacity" />
-            <User size={18} className="relative z-10" />
-          </button>
+          <NotificationDropdown />
+          <ProfileDropdown />
         </div>
 
         {/* Mobile Header (Minimal) */}
