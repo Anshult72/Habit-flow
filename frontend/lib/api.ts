@@ -27,15 +27,29 @@ export async function apiFetch<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `API error ${response.status}`);
+    if (!response.ok) {
+      let errorMessage = `API error ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error?.message || errorMessage;
+      } catch (e) {
+        // Fallback for non-JSON errors
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Failed to fetch') {
+      console.error('[apiFetch] Network Error: Backend might be down or CORS blocked.', { url: `${API_URL}${endpoint}` });
+      throw new Error('Connection failed. Please ensure the backend server is running.');
+    }
+    throw error;
   }
-
-  return response.json();
 }

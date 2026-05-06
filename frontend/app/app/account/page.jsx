@@ -100,8 +100,9 @@ export default function AccountPage() {
       const fileName = `${user.supabaseId}-${Date.now()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
+      const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'Habitflow';
       const { data, error } = await supabase.storage
-        .from('avatars')
+        .from(bucketName)
         .upload(filePath, file, { upsert: true });
 
       if (error) throw error;
