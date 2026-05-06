@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Sparkles, Search, Filter, Layers, Zap, Flame, Target, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import useStore from '@/store/useStore';
 
 export default function Habits() {
-  const { habits, addHabit, updateHabit, deleteHabit, bundles } = useStore();
+  const { habits, addHabit, updateHabit, deleteHabit, syncData, bundles } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   const getCategoryHexColor = (cat) => {
     const map = {
@@ -47,25 +48,45 @@ export default function Habits() {
     { name: 'Morning Routine', category: 'Productivity', color: getCategoryHexColor('Productivity'), goal: 28, difficulty: 'Medium' },
   ];
 
+  // Fetch habits from API on mount
+  useEffect(() => {
+    const fetchHabits = async () => {
+      setIsLoading(true);
+      try {
+        await syncData();
+      } catch (err) {
+        console.error('Failed to fetch habits:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchHabits();
+  }, []);
+
+  // Helper: get display name (handles both 'name' and 'title' from DB)
+  const getHabitName = (habit) => habit.name || habit.title || 'Unnamed';
+
   const filteredHabits = habits.filter(h => {
-    const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const habitName = getHabitName(h);
+    const matchesSearch = habitName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || h.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const applyTemplate = (template) => {
-    addHabit(template);
-    toast.success(`Applied template: ${template.name}`);
+  const applyTemplate = async (template) => {
+    await addHabit(template);
     setIsTemplatesModalOpen(false);
   };
 
-  const activateBundle = (bundle) => {
+  const activateBundle = async (bundle) => {
     const bundleHabits = [
       { name: 'Cold Shower', category: 'Health', color: getCategoryHexColor('Health'), goal: 30, difficulty: 'Hard' },
       { name: 'Morning Journal', category: 'Mindfulness', color: getCategoryHexColor('Mindfulness'), goal: 30, difficulty: 'Easy' },
       { name: 'Deep Meditation', category: 'Mindfulness', color: getCategoryHexColor('Mindfulness'), goal: 30, difficulty: 'Medium' }
     ];
-    bundleHabits.forEach(h => addHabit(h));
+    for (const h of bundleHabits) {
+      await addHabit(h);
+    }
     toast.success(`Protocol Bundle "${bundle.name}" activated!`, {
       icon: '⚡',
       style: { border: '1px solid #FF6B2C' }
@@ -75,7 +96,13 @@ export default function Habits() {
   const handleOpenModal = (habit = null) => {
     if (habit) {
       setEditingId(habit.id);
-      setFormData({ name: habit.name, category: habit.category, color: habit.color || getCategoryHexColor(habit.category), goal: habit.goal, difficulty: habit.difficulty || 'Medium' });
+      setFormData({ 
+        name: getHabitName(habit), 
+        category: habit.category, 
+        color: habit.color || getCategoryHexColor(habit.category), 
+        goal: habit.goal, 
+        difficulty: habit.difficulty || 'Medium' 
+      });
     } else {
       setEditingId(null);
       setFormData({ name: '', category: 'Health', color: getCategoryHexColor('Health'), goal: 30, difficulty: 'Medium' });
@@ -83,17 +110,29 @@ export default function Habits() {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.name) return;
 
     if (editingId) {
-      updateHabit(editingId, formData);
+      await updateHabit(editingId, formData);
     } else {
-      addHabit(formData);
+      await addHabit(formData);
     }
     setIsModalOpen(false);
   };
+
+  const handleDelete = async (id) => {
+    await deleteHabit(id);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="h-96 flex items-center justify-center">
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} className="w-12 h-12 border-2 border-[#FF6B2C] border-t-transparent rounded-full shadow-[0_0_20px_rgba(255,107,44,0.4)]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-10">
@@ -162,6 +201,7 @@ export default function Habits() {
         </div>
       </div>
 
+      {/* Habits Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>
           {filteredHabits.map((habit, i) => (
@@ -174,7 +214,7 @@ export default function Habits() {
                 <div className="flex items-start gap-4">
                   <div className="w-4 h-4 rounded-full mt-1" style={{ backgroundColor: getCategoryHexColor(habit.category), boxShadow: `0 0 15px ${getCategoryHexColor(habit.category)}` }} />
                   <div>
-                    <h3 className="font-display font-bold text-xl text-white mb-1">{habit.name}</h3>
+                    <h3 className="font-display font-bold text-xl text-white mb-1">{getHabitName(habit)}</h3>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] px-2 py-0.5 bg-white/5 border border-white/10 rounded uppercase tracking-wide" style={{ color: getCategoryHexColor(habit.category) }}>{habit.category}</span>
                       <span className={`text-[10px] px-2 py-0.5 bg-white/5 border border-white/10 rounded uppercase tracking-wide font-bold ${difficulties.find(d => d.label === habit.difficulty)?.color || 'text-white'}`}>
@@ -185,13 +225,13 @@ export default function Habits() {
                 </div>
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => handleOpenModal(habit)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-textMuted hover:text-white transition-colors"><Edit2 size={16} /></button>
-                  <button onClick={() => deleteHabit(habit.id)} className="p-2 bg-danger/10 hover:bg-danger/20 rounded-xl text-danger hover:text-red-400 transition-colors border border-danger/20 hover:border-danger/40"><Trash2 size={16} /></button>
+                  <button onClick={() => handleDelete(habit.id)} className="p-2 bg-danger/10 hover:bg-danger/20 rounded-xl text-danger hover:text-red-400 transition-colors border border-danger/20 hover:border-danger/40"><Trash2 size={16} /></button>
                 </div>
               </div>
               <div className="mt-auto pt-6 border-t border-white/5 flex justify-between items-end relative z-10">
                 <div>
                   <p className="text-xs text-textMuted uppercase tracking-wider mb-1">Target</p>
-                  <p className="font-display text-2xl font-bold text-white">{habit.goal} <span className="text-sm font-medium text-textMuted">Days/Mo</span></p>
+                  <p className="font-display text-2xl font-bold text-white">{habit.goal || 30} <span className="text-sm font-medium text-textMuted">Days/Mo</span></p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-textMuted uppercase tracking-wider mb-1">XP Value</p>
@@ -203,6 +243,41 @@ export default function Habits() {
         </AnimatePresence>
       </div>
 
+      {/* Empty State */}
+      {!isLoading && filteredHabits.length === 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="flex flex-col items-center justify-center py-20 text-center"
+        >
+          <div className="relative mb-6">
+            <motion.div 
+              animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
+              transition={{ duration: 4, repeat: Infinity }}
+              className="absolute inset-0 bg-[#FF6B2C] rounded-full blur-[40px]"
+            />
+            <div className="relative w-24 h-24 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center">
+              <Target size={40} className="text-white/20" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-2">No Protocols Found</h3>
+          <p className="text-textMuted max-w-sm mb-6">
+            {searchQuery || selectedCategory !== 'All' 
+              ? 'No habits match your current filters. Try adjusting your search.' 
+              : 'No habits yet — create your first protocol to begin your journey.'}
+          </p>
+          {!searchQuery && selectedCategory === 'All' && (
+            <button
+              onClick={() => handleOpenModal()}
+              className="px-6 py-3 rounded-full bg-[#FF6B2C] text-white font-bold shadow-[0_0_20px_rgba(255,107,44,0.3)] hover:shadow-[0_0_30px_rgba(255,107,44,0.5)] transition-all flex items-center gap-2"
+            >
+              <Plus size={20} /> Initialize First Protocol
+            </button>
+          )}
+        </motion.div>
+      )}
+
+      {/* Create/Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -258,6 +333,7 @@ export default function Habits() {
         )}
       </AnimatePresence>
 
+      {/* Templates Modal */}
       <AnimatePresence>
         {isTemplatesModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { format, subDays, startOfWeek, startOfMonth } from 'date-fns';
+import toast from 'react-hot-toast';
 
 const useStore = create(
   persist(
@@ -301,9 +302,29 @@ const useStore = create(
         });
       },
 
-      addHabit: (habit) => set((state) => ({ 
-        habits: [...state.habits, { id: crypto.randomUUID(), ...habit, difficulty: habit.difficulty || 'Medium' }] 
-      })),
+      addHabit: async (habit) => {
+        try {
+          const { apiFetch } = await import('@/lib/api');
+          const res = await apiFetch('/habits', {
+            method: 'POST',
+            body: JSON.stringify({
+              title: habit.name || habit.title,
+              category: habit.category,
+              difficulty: habit.difficulty || 'Medium',
+              goal: habit.goal || 0,
+              color: habit.color,
+              icon: habit.icon,
+              description: habit.description
+            })
+          });
+          if (res) {
+            set((state) => ({ habits: [...state.habits, res] }));
+            toast.success('Protocol Initialized');
+          }
+        } catch (error) {
+          toast.error('Failed to initialize protocol');
+        }
+      },
 
       addMatrixTask: (task) => set((state) => ({
         matrixTasks: [...state.matrixTasks, { 
@@ -372,13 +393,44 @@ const useStore = create(
         };
       }),
 
-      updateHabit: (id, updatedHabit) => set((state) => ({
-        habits: state.habits.map((h) => (h.id === id ? { ...h, ...updatedHabit } : h)),
-      })),
+      updateHabit: async (id, updatedHabit) => {
+        try {
+          const { apiFetch } = await import('@/lib/api');
+          const res = await apiFetch(`/habits/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              title: updatedHabit.name || updatedHabit.title,
+              category: updatedHabit.category,
+              difficulty: updatedHabit.difficulty,
+              goal: updatedHabit.goal,
+              color: updatedHabit.color,
+              icon: updatedHabit.icon,
+              description: updatedHabit.description
+            })
+          });
+          if (res) {
+            set((state) => ({
+              habits: state.habits.map((h) => (h.id === id ? res : h)),
+            }));
+            toast.success('Protocol Calibrated');
+          }
+        } catch (error) {
+          toast.error('Failed to calibrate protocol');
+        }
+      },
 
-      deleteHabit: (id) => set((state) => ({
-        habits: state.habits.filter((h) => h.id !== id),
-      })),
+      deleteHabit: async (id) => {
+        try {
+          const { apiFetch } = await import('@/lib/api');
+          await apiFetch(`/habits/${id}`, { method: 'DELETE' });
+          set((state) => ({
+            habits: state.habits.filter((h) => h.id !== id),
+          }));
+          toast.success('Protocol Terminated');
+        } catch (error) {
+          toast.error('Failed to terminate protocol');
+        }
+      },
 
       setHabits: (habits) => set({ habits }),
       setCompletions: (completions) => set({ completions }),

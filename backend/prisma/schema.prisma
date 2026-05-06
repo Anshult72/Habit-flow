@@ -56,10 +56,13 @@ model User {
 model Habit {
   id         String   @id @default(cuid())
   title      String
+  description String?
+  category    String?
   color      String   @default("#FF6B2C")
   icon       String   @default("Zap")
   frequency  String   @default("Daily")
   difficulty String   @default("Medium")
+  goal       Int      @default(30)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

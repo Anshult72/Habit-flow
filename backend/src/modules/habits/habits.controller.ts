@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request, Patch, Delete, Param } from '@nestjs/common';
 import { HabitsService } from './habits.service';
 import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 
@@ -16,6 +16,18 @@ export class HabitsController {
   @Post()
   async create(@Request() req: any, @Body() body: any) {
     return this.habitsService.create(req.user.sub, body);
+  }
+
+  @UseGuards(SupabaseAuthGuard)
+  @Patch(':id')
+  async update(@Request() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.habitsService.update(req.user.sub, id, body);
+  }
+
+  @UseGuards(SupabaseAuthGuard)
+  @Delete(':id')
+  async delete(@Request() req: any, @Param('id') id: string) {
+    return this.habitsService.delete(req.user.sub, id);
   }
 }
 
