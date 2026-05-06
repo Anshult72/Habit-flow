@@ -101,15 +101,19 @@ export default function AccountPage() {
       const filePath = `avatars/${fileName}`;
 
       const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'Habitflow';
-      const { data, error } = await supabase.storage
+      
+      const { data, error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, { upsert: true });
 
-      if (error) throw error;
+      if (uploadError) {
+        console.error('Supabase upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}. Make sure the "${bucketName}" bucket exists in Supabase and is set to "Public".`);
+      }
 
-      // Get public URL
+      // Get public URL using the same bucket name
       const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
+        .from(bucketName)
         .getPublicUrl(filePath);
 
       setFormData(prev => ({ ...prev, avatarUrl: publicUrl }));
@@ -123,8 +127,8 @@ export default function AccountPage() {
       toast.success('Avatar updated successfully');
 
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload image. Ensure "avatars" bucket exists and is public.');
+      console.error('Upload error details:', error);
+      toast.error(error.message || 'Failed to upload image. Please check your Supabase Storage settings.');
       
       // Fallback: If storage fails (bucket might not exist), let the user know
       // In a real app, you would create the bucket in Supabase dashboard.
