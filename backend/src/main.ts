@@ -23,7 +23,7 @@ async function bootstrap() {
   // CORS — restrict to frontend domain in production
   const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:3000'];
+    : ['http://localhost:3000', 'https://habit-flow-henna.vercel.app'];
 
   app.enableCors({
     origin: (origin, callback) => {

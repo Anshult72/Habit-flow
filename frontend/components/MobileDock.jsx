@@ -26,7 +26,7 @@ const navGroups = [
       { label: 'Missions', path: '/app/missions', icon: Rocket },
       { label: 'Wishlist', path: '/app/wishlist', icon: Heart },
       { label: 'Learning Hub', path: '/app/learning', icon: BookOpen },
-      { label: 'Memo', path: '/app/memo', icon: StickyNote },
+      { label: 'Memo', path: '/app/memos', icon: StickyNote },
       { label: 'Vision Board', path: '/app/vision-board', icon: Image },
     ]
   },

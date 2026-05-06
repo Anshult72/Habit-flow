@@ -236,7 +236,7 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: 'Deep Focus', icon: Play, path: '/app/focus-zone', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:border-blue-500/40' },
-              { label: 'New Memo', icon: Plus, path: '/app/memo', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20 hover:border-orange-500/40' },
+              { label: 'New Memo', icon: Plus, path: '/app/memos', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20 hover:border-orange-500/40' },
               { label: 'Study Session', icon: BookOpen, path: '/app/learning', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:border-purple-500/40' },
               { label: 'Matrix View', icon: Target, path: '/app/matrix', color: 'bg-green-500/10 text-green-400 border-green-500/20 hover:border-green-500/40' },
             ].map((action, idx) => {
@@ -293,12 +293,12 @@ export default function Dashboard() {
               <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
                 <StickyNote size={16} className="text-[#FF6B2C]" /> Cognitive Sync
               </h3>
-              <button onClick={() => router.push('/app/memo')} className="text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:underline">Launch Brain</button>
+              <button onClick={() => router.push('/app/memos')} className="text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:underline">Launch Brain</button>
             </div>
             <div className="space-y-3">
               {memos.filter(m => m.isPinned).length > 0 ? (
                 memos.filter(m => m.isPinned).slice(0, 2).map(memo => (
-                  <div key={memo.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-[#FF6B2C]/30 transition-all cursor-pointer" onClick={() => router.push('/app/memo')}>
+                  <div key={memo.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-[#FF6B2C]/30 transition-all cursor-pointer" onClick={() => router.push('/app/memos')}>
                     <div className="flex justify-between items-start mb-2">
                       <p className="text-xs font-bold text-white truncate pr-4">{memo.title}</p>
                       <span className="text-[8px] font-black text-[#FF8C42] uppercase tracking-widest">{memo.category}</span>
@@ -320,7 +320,7 @@ export default function Dashboard() {
               <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
                 <Rocket size={16} className="text-[#FF6B2C]" /> Active Missions
               </h3>
-              <button onClick={() => router.push('/app/countdown')} className="text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:underline">All Missions</button>
+              <button onClick={() => router.push('/app/missions')} className="text-[#FF8C42] text-[10px] font-bold uppercase tracking-widest hover:underline">All Missions</button>
             </div>
             {missions.length > 0 ? (
               <div className="space-y-4">
