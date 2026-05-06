@@ -238,9 +238,22 @@ export default function AccountPage() {
               <p className="text-text-muted mt-1">{user.email}</p>
 
               <div className="mt-6 w-full pt-6 border-t border-white/10 flex flex-col gap-3">
-                <div className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-xl border border-white/5 group hover:border-[#FF6B2C]/30 transition-colors">
+                <div 
+                  onClick={() => {
+                    if (user.userId) {
+                      navigator.clipboard.writeText(user.userId);
+                      toast.success('ID Copied!');
+                    }
+                  }}
+                  className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-xl border border-white/5 group hover:border-[#FF6B2C]/30 transition-all cursor-pointer hover:bg-white/[0.07]"
+                >
                   <span className="text-sm text-text-muted font-medium">User ID</span>
-                  <span className="text-sm font-mono font-black text-[#FF6B2C] tracking-wider italic">#{user.userId || '---'}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-mono font-black text-[#FF6B2C] tracking-wider italic">#{user.userId || '---'}</span>
+                    <div className="w-3.5 h-3.5 flex items-center justify-center text-white/20 group-hover:text-[#FF6B2C]">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-xl">
                   <span className="text-sm text-text-muted font-medium">Joined</span>

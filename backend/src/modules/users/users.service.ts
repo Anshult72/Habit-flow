@@ -21,19 +21,26 @@ export class UsersService implements OnModuleInit {
   }
 
   private isWeakUserId(id: string): boolean {
+    const sequences = [
+      '01234567', '12345678', '23456789', '34567890',
+      '98765432', '87654321', '76543210', '09876543'
+    ];
+    
     return (
-      /^(\d)\1+$/.test(id) || // 11111111
-      /12345678/.test(id) || // ascending
-      /87654321/.test(id) || // descending
-      /(\d)\1{3,}/.test(id) // repeating patterns
+      /^(\d)\1+$/.test(id) || // All same digits (11111111)
+      sequences.some(seq => id.includes(seq)) || // Common sequences
+      /(\d)\1{2,}/.test(id) || // 3+ repeating digits (111...)
+      /(\d{2})\1{2,}/.test(id) // Repeating pairs (121212...)
     );
   }
 
   async createPremiumUserId(): Promise<string> {
     let userId = '';
     let exists = true;
+    let attempts = 0;
 
-    while (exists) {
+    while (exists && attempts < 100) {
+      attempts++;
       userId = this.generateSecureUserId();
       if (this.isWeakUserId(userId)) continue;
 
@@ -41,6 +48,10 @@ export class UsersService implements OnModuleInit {
         where: { userId },
       });
       if (!user) exists = false;
+    }
+
+    if (attempts >= 100) {
+      throw new Error('Failed to generate a unique, non-weak User ID after 100 attempts.');
     }
 
     return userId;
