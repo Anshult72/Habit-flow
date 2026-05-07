@@ -81,8 +81,8 @@ function ChapterDetailContent() {
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Progress</p>
                   <p className="text-2xl font-display font-black text-[#FF6B2C]">{chapter.progress}%</p>
                 </div>
-                <div className="w-16 h-16 rounded-full border-4 border-white/5 flex items-center justify-center relative">
-                  <svg className="w-full h-full -rotate-90">
+                <div className="w-16 h-16 flex items-center justify-center relative">
+                  <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90 overflow-visible">
                     <circle 
                       cx="32" cy="32" r="28" 
                       fill="transparent" 
@@ -95,9 +95,10 @@ function ChapterDetailContent() {
                       fill="transparent" 
                       stroke="currentColor" 
                       strokeWidth="4"
-                      strokeDasharray="176"
-                      initial={{ strokeDashoffset: 176 }}
-                      animate={{ strokeDashoffset: 176 - (176 * chapter.progress) / 100 }}
+                      strokeDasharray="175.93"
+                      initial={{ strokeDashoffset: 175.93 }}
+                      animate={{ strokeDashoffset: 175.93 - (175.93 * (chapter.progress || 0)) / 100 }}
+                      transition={{ duration: 1, ease: "easeOut" }}
                       className="text-[#FF6B2C]"
                       strokeLinecap="round"
                     />

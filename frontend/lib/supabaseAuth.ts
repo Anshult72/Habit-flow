@@ -26,14 +26,26 @@ export const signOut = async () => {
 
 // ─── Get Current Session ─────────────────────────────────────────────────────
 export const getSession = async (): Promise<Session | null> => {
-  const { data } = await supabase.auth.getSession();
-  return data.session;
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return data.session;
+  } catch (error) {
+    console.error('[supabaseAuth] getSession error:', error);
+    return null;
+  }
 };
 
 // ─── Get Current User ────────────────────────────────────────────────────────
 export const getCurrentUser = async (): Promise<User | null> => {
-  const { data } = await supabase.auth.getUser();
-  return data.user ?? null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    return data.user ?? null;
+  } catch (error) {
+    console.error('[supabaseAuth] getUser error:', error);
+    return null;
+  }
 };
 
 // ─── Auth State Listener ─────────────────────────────────────────────────────

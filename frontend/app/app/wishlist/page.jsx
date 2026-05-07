@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { format, differenceInMonths } from 'date-fns';
+import { apiFetch } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 export default function WishlistSection() {
   const { wishlist, addWishlistItem, updateWishlistItem, deleteWishlistItem, updateSavings } = useStore();
@@ -247,8 +249,15 @@ function WishlistCard({ item, index, onUpdateSavings, onDelete }) {
         
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
         
-        <div className="absolute top-4 left-4 z-10 px-3 py-1 rounded-full bg-black/60 border border-white/10 backdrop-blur-md text-[9px] font-black uppercase tracking-widest text-white/60">
-          {item.category}
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+          <div className="px-3 py-1 rounded-full bg-black/60 border border-white/10 backdrop-blur-md text-[9px] font-black uppercase tracking-widest text-white/60 w-max">
+            {item.category}
+          </div>
+          {item.store && item.store !== 'External' && (
+            <div className="px-3 py-1 rounded-full bg-blue-500/80 border border-blue-400/50 backdrop-blur-md text-[9px] font-black uppercase tracking-widest text-white w-max shadow-[0_0_10px_rgba(59,130,246,0.5)]">
+              {item.store}
+            </div>
+          )}
         </div>
 
         {isAcquired && (
@@ -345,24 +354,45 @@ function AddGoalModal({ onClose, onSave }) {
     link: '',
     image: '',
     deadline: '',
-    notes: ''
+    notes: '',
+    store: ''
   });
   const [isImporting, setIsImporting] = useState(false);
 
-  const handleImport = () => {
-    if (!formData.link) return;
+  const handleImport = async () => {
+    if (!formData.link) {
+      toast.error('Please enter a valid product URL to sync.');
+      return;
+    }
+    
     setIsImporting(true);
-    // Simulate smart import
-    setTimeout(() => {
+    
+    try {
+      const response = await apiFetch('/targets/auto-sync', {
+        method: 'POST',
+        body: JSON.stringify({ url: formData.link })
+      });
+
+      if (response.error) {
+        toast.error('Partial metadata fetched. Check fields manually.');
+      } else {
+        toast.success(`Successfully synced from ${response.store}`);
+      }
+
       setFormData(prev => ({
         ...prev,
-        title: 'Premium Mechanical Keyboard K2',
-        targetPrice: '12999',
-        image: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?auto=format&fit=crop&q=80&w=800',
-        category: 'Tech'
+        title: response.title && response.title !== 'Unknown Product' ? response.title : prev.title,
+        targetPrice: response.price ? String(response.price) : prev.targetPrice,
+        image: response.image || prev.image,
+        category: response.category || prev.category,
+        store: response.store || prev.store
       }));
+      
+    } catch (error) {
+      toast.error(error.message || 'Auto-sync failed. Please check the URL.');
+    } finally {
       setIsImporting(false);
-    }, 1500);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -417,6 +447,21 @@ function AddGoalModal({ onClose, onSave }) {
                 </button>
               </div>
             </div>
+
+            {formData.image && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden">
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-[#FF6B2C]/30 shadow-[0_0_20px_rgba(255,107,44,0.1)]">
+                  <img src={formData.image} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-white/10" />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle2 size={14} className="text-[#FF8C42]" />
+                      <p className="text-[10px] font-black text-[#FF8C42] uppercase tracking-widest">Metadata Synced</p>
+                    </div>
+                    <p className="text-sm font-bold text-white line-clamp-1">{formData.title || 'Product Target Identified'}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-8">

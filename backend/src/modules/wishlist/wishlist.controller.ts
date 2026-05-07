@@ -1,7 +1,14 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { WishlistService } from './wishlist.service';
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 
-@Controller('wishlist')
+@Controller('targets')
+@UseGuards(SupabaseAuthGuard)
 export class WishlistController {
   constructor(private readonly wishlistService: WishlistService) {}
+
+  @Post('auto-sync')
+  async autoSync(@Body('url') url: string) {
+    return this.wishlistService.autoSync(url);
+  }
 }

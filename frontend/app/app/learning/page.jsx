@@ -32,17 +32,12 @@ export default function LearningHub() {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [deepStudyId, setDeepStudyId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState('All');
 
   const filteredSubjects = useMemo(() => {
     return (subjects || []).filter(s => {
-      const matchesSearch = s.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = filterCategory === 'All' || s.category === filterCategory;
-      return matchesSearch && matchesCategory;
+      return s.title.toLowerCase().includes(searchQuery.toLowerCase());
     });
-  }, [subjects, searchQuery, filterCategory]);
-
-  const categories = ['All', 'Development', 'Design', 'Data Science', 'Mathematics', 'Academics', 'Skills'];
+  }, [subjects, searchQuery]);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white pt-6 pb-24 px-4 md:px-10 overflow-x-hidden relative">
@@ -72,8 +67,8 @@ export default function LearningHub() {
             </motion.div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
-            <div className="relative flex-1 xl:w-80 group">
+          <div className="flex flex-wrap items-center gap-6 w-full xl:w-auto">
+            <div className="relative w-full md:w-96 group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#FF6B2C] transition-colors" size={18} />
               <input 
                 type="text" 
@@ -82,22 +77,6 @@ export default function LearningHub() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-sm focus:outline-none focus:border-[#FF6B2C]/50 transition-all placeholder:text-white/20"
               />
-            </div>
-            
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 p-1.5 rounded-2xl overflow-x-auto no-scrollbar">
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setFilterCategory(cat)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                    filterCategory === cat 
-                      ? 'bg-[#FF6B2C] text-white shadow-[0_0_20px_rgba(255,107,44,0.3)]' 
-                      : 'text-white/40 hover:text-white/60'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
             </div>
 
             <motion.button
