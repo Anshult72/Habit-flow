@@ -113,13 +113,22 @@ export class SquadsService {
     if (!user) return [];
 
     return this.prisma.squad.findMany({
-      where: { members: { some: { userId: user.id } } },
+      where: {
+        OR: [
+          { members: { some: { userId: user.id } } },
+          { requests: { some: { receiverId: user.id, status: 'pending' } } }
+        ]
+      },
       include: {
         members: {
           include: { user: { select: { id: true, name: true, avatarUrl: true } } }
         },
+        requests: {
+          where: { receiverId: user.id, status: 'pending' },
+        },
         creator: { select: { name: true } }
-      }
+      },
+      orderBy: { createdAt: 'desc' }
     });
   }
 

@@ -146,6 +146,7 @@ export class DuelsService {
         },
         creator: { select: { name: true, userId: true } },
         opponent: { select: { name: true, userId: true } },
+        requests: true,
       },
       orderBy: { createdAt: 'desc' },
     });

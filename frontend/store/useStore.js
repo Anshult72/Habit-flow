@@ -64,7 +64,17 @@ const useStore = create(
           }
           
           if (Array.isArray(habitsRes)) {
-            set({ habits: habitsRes });
+            const newCompletions = {};
+            habitsRes.forEach(h => {
+              if (h.completions) {
+                h.completions.forEach(c => {
+                  if (c.completed) {
+                    newCompletions[`${h.id}-${c.date}`] = true;
+                  }
+                });
+              }
+            });
+            set({ habits: habitsRes, completions: newCompletions });
           }
 
           if (analyticsRes && typeof analyticsRes.score === 'number') {
@@ -435,15 +445,20 @@ const useStore = create(
       setHabits: (habits) => set({ habits }),
       setCompletions: (completions) => set({ completions }),
 
-      toggleCompletion: (habitId, date) => {
+      toggleCompletion: async (habitId, date) => {
         const key = `${habitId}-${date}`;
         const habit = get().habits.find(h => h.id === habitId);
+        if (!habit) return;
+        
         const difficultyMultipliers = { Easy: 10, Medium: 25, Hard: 50, Elite: 100 };
-        const xpAmount = difficultyMultipliers[habit?.difficulty || 'Medium'];
+        const xpAmount = difficultyMultipliers[habit.difficulty || 'Medium'];
 
+        const isCurrentlyCompleted = !!get().completions[key];
+
+        // Optimistic UI update
         set((state) => {
           const newCompletions = { ...state.completions };
-          if (newCompletions[key]) {
+          if (isCurrentlyCompleted) {
             delete newCompletions[key];
             get().addXP(-xpAmount, date);
           } else {
@@ -452,6 +467,37 @@ const useStore = create(
           }
           return { completions: newCompletions };
         });
+
+        // Backend Sync
+        try {
+          const { apiFetch } = await import('@/lib/api');
+          const updatedHabit = await apiFetch(`/habits/${habitId}/toggle`, {
+            method: 'POST',
+            body: JSON.stringify({ date }),
+          });
+          
+          if (updatedHabit) {
+            set((state) => ({
+              habits: state.habits.map((h) => (h.id === habitId ? updatedHabit : h)),
+            }));
+            // Update auth/me to get the actual backend XP and sync
+            get().syncData();
+          }
+        } catch (error) {
+          // Revert on failure
+          set((state) => {
+            const newCompletions = { ...state.completions };
+            if (isCurrentlyCompleted) {
+              newCompletions[key] = true;
+              get().addXP(xpAmount, date);
+            } else {
+              delete newCompletions[key];
+              get().addXP(-xpAmount, date);
+            }
+            return { completions: newCompletions };
+          });
+          toast.error('Failed to sync protocol completion');
+        }
         
         get().autoCheckAchievements();
       },

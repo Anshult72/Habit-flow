@@ -29,5 +29,11 @@ export class HabitsController {
   async delete(@Request() req: any, @Param('id') id: string) {
     return this.habitsService.delete(req.user.sub, id);
   }
+
+  @UseGuards(SupabaseAuthGuard)
+  @Post(':id/toggle')
+  async toggle(@Request() req: any, @Param('id') id: string, @Body() body: { date: string }) {
+    return this.habitsService.toggle(req.user.sub, id, body.date);
+  }
 }
 

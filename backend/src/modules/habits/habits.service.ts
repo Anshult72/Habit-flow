@@ -1,12 +1,14 @@
 import { Injectable, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CacheService } from '../cache/cache.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class HabitsService {
   constructor(
     private prisma: PrismaService,
     private cache: CacheService,
+    private usersService: UsersService,
   ) {}
 
   /**
@@ -96,5 +98,55 @@ export class HabitsService {
     await this.prisma.habit.delete({ where: { id } });
     await this.cache.del(`user:${userId}:habits`);
     return { success: true };
+  }
+
+  async toggle(supabaseId: string, id: string, date: string) {
+    const userId = await this.resolveUserId(supabaseId);
+
+    const habit = await this.prisma.habit.findUnique({
+      where: { id },
+      include: { completions: { where: { date } } },
+    });
+
+    if (!habit) throw new NotFoundException('Habit not found');
+    if (habit.userId !== userId) throw new ForbiddenException('Not authorized');
+
+    const difficultyMultipliers: Record<string, number> = {
+      Easy: 10,
+      Medium: 25,
+      Hard: 50,
+      Elite: 100,
+    };
+    const xpAmount = difficultyMultipliers[habit.difficulty] || 25;
+
+    const existingCompletion = habit.completions[0];
+
+    if (existingCompletion) {
+      // Un-complete: Remove completion, revoke XP
+      if (existingCompletion.completed) {
+        await this.prisma.habitCompletion.delete({
+          where: { id: existingCompletion.id },
+        });
+        await this.usersService.deductXP(userId, xpAmount, `Removed completion for habit: ${habit.title}`);
+      }
+    } else {
+      // Complete: Add completion, grant XP
+      await this.prisma.habitCompletion.create({
+        data: {
+          habitId: id,
+          date,
+          completed: true,
+        },
+      });
+      await this.usersService.addXP(userId, xpAmount, `Completed habit: ${habit.title}`);
+    }
+
+    await this.cache.del(`user:${userId}:habits`);
+    
+    // Return updated habit
+    return this.prisma.habit.findUnique({
+      where: { id },
+      include: { completions: true },
+    });
   }
 }
