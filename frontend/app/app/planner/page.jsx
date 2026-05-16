@@ -30,7 +30,7 @@ export default function DailyPlanner() {
   useEffect(() => {
     const saved = localStorage.getItem('habitflow-planner-data');
     if (saved) {
-      setPlannerData(JSON.parse(saved));
+      setTimeout(() => setPlannerData(JSON.parse(saved)), 0);
     }
   }, []);
 
@@ -325,7 +325,7 @@ export default function DailyPlanner() {
           </div>
           <div className="space-y-4">
             <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-xs text-text-muted">
-              Plan your "Big Three" tasks during the <span className="text-white font-bold">9 AM – 12 PM</span> window for maximum cognitive output.
+              Plan your &quot;Big Three&quot; tasks during the <span className="text-white font-bold">9 AM – 12 PM</span> window for maximum cognitive output.
             </div>
             <button className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-bold text-[10px] uppercase tracking-[0.3em] hover:bg-[#FF6B2C] hover:border-[#FF6B2C] transition-all">
               Initialize Routine

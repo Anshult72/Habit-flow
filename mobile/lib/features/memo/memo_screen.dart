@@ -1,47 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../../core/widgets/hf_premium_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_theme.dart';
-
-// ─── Data Model ────────────────────────────────────────────────────────────
-class Memo {
-  final String id;
-  String title;
-  String content;
-  String category;
-  String priority;
-  String color;
-  bool isPinned;
-  final DateTime createdAt;
-
-  Memo({
-    required this.id,
-    required this.title,
-    required this.content,
-    this.category = 'Ideas',
-    this.priority = 'Low',
-    this.color = '#FF6B2C',
-    this.isPinned = false,
-    DateTime? createdAt,
-  }) : createdAt = createdAt ?? DateTime.now();
-
-  Map<String, dynamic> toJson() => {
-    'id': id, 'title': title, 'content': content,
-    'category': category, 'priority': priority, 'color': color,
-    'isPinned': isPinned, 'createdAt': createdAt.toIso8601String(),
-  };
-
-  factory Memo.fromJson(Map<String, dynamic> json) => Memo(
-    id: json['id'], title: json['title'], content: json['content'],
-    category: json['category'] ?? 'Ideas', priority: json['priority'] ?? 'Low',
-    color: json['color'] ?? '#FF6B2C', isPinned: json['isPinned'] ?? false,
-    createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-  );
-}
+import '../../services/memo_service.dart';
+import '../../models/memo_model.dart';
 
 // ─── Memo Screen ───────────────────────────────────────────────────────────
 class MemoScreen extends ConsumerStatefulWidget {
@@ -52,7 +17,6 @@ class MemoScreen extends ConsumerStatefulWidget {
 }
 
 class _MemoScreenState extends ConsumerState<MemoScreen> {
-  List<Memo> _memos = [];
   String _searchQuery = '';
   String _activeCategory = 'All';
   final _quickController = TextEditingController();
@@ -60,73 +24,20 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
   static const _categories = ['All', 'Ideas', 'Study', 'Vision', 'Routine', 'Research', 'Business', 'Coding', 'Personal'];
 
   @override
-  void initState() {
-    super.initState();
-    _loadMemos();
-  }
-
-  @override
   void dispose() {
     _quickController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadMemos() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('habitflow-memos');
-    if (raw != null) {
-      final List decoded = jsonDecode(raw);
-      setState(() => _memos = decoded.map((m) => Memo.fromJson(m)).toList());
-    }
-  }
-
-  Future<void> _saveMemos() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('habitflow-memos', jsonEncode(_memos.map((m) => m.toJson()).toList()));
-  }
-
-  List<Memo> get _filtered {
-    return _memos.where((m) {
-      final matchSearch = m.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          m.content.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchCat = _activeCategory == 'All' || m.category == _activeCategory;
-      return matchSearch && matchCat;
-    }).toList();
-  }
-
   void _quickAdd() {
     if (_quickController.text.trim().isEmpty) return;
-    setState(() {
-      _memos.insert(0, Memo(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: 'Quick Thought',
-        content: _quickController.text.trim(),
-        category: 'Ideas',
-      ));
-      _quickController.clear();
+    ref.read(memosProvider.notifier).addMemo({
+      'title': 'Quick Thought',
+      'content': _quickController.text.trim(),
+      'category': 'Ideas',
+      'priority': 'Low',
     });
-    _saveMemos();
-  }
-
-  void _deleteMemo(String id) {
-    setState(() => _memos.removeWhere((m) => m.id == id));
-    _saveMemos();
-  }
-
-  void _togglePin(String id) {
-    setState(() {
-      final memo = _memos.firstWhere((m) => m.id == id);
-      memo.isPinned = !memo.isPinned;
-    });
-    _saveMemos();
-  }
-
-  Color _priorityColor(String p) {
-    switch (p) {
-      case 'High': return Colors.redAccent;
-      case 'Medium': return Colors.amber;
-      default: return Colors.blue;
-    }
+    _quickController.clear();
   }
 
   Color _parseColor(String hex) {
@@ -139,8 +50,7 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pinned = _filtered.where((m) => m.isPinned).toList();
-    final others = _filtered.where((m) => !m.isPinned).toList();
+    final memosAsync = ref.watch(memosProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -183,7 +93,7 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                     child: Container(
                       padding: EdgeInsets.all(10.w),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [AppTheme.primary, const Color(0xFFE85D04)]),
+                        gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFFE85D04)]),
                         borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Icon(Icons.add_rounded, color: Colors.white, size: 22.sp),
@@ -202,21 +112,21 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                 decoration: InputDecoration(
                   hintText: 'Quick Capture thought... (Enter to save)',
                   hintStyle: GoogleFonts.inter(color: Colors.white12, fontSize: 13.sp),
-                  prefixIcon: Icon(Icons.bolt_rounded, color: AppTheme.primary.withOpacity(0.4), size: 18.sp),
+                  prefixIcon: Icon(Icons.bolt_rounded, color: AppTheme.primary.withValues(alpha: 0.4), size: 18.sp),
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.03),
+                  fillColor: Colors.white.withValues(alpha: 0.03),
                   contentPadding: EdgeInsets.symmetric(vertical: 14.h),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16.r),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16.r),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16.r),
-                    borderSide: BorderSide(color: AppTheme.primary.withOpacity(0.5)),
+                    borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.5)),
                   ),
                 ),
                 onSubmitted: (_) => _quickAdd(),
@@ -241,10 +151,10 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 16.w),
                       decoration: BoxDecoration(
-                        color: isActive ? AppTheme.primary : Colors.white.withOpacity(0.03),
+                        color: isActive ? AppTheme.primary : Colors.white.withValues(alpha: 0.03),
                         borderRadius: BorderRadius.circular(10.r),
                         border: Border.all(
-                          color: isActive ? AppTheme.primary : Colors.white.withOpacity(0.1),
+                          color: isActive ? AppTheme.primary : Colors.white.withValues(alpha: 0.1),
                         ),
                       ),
                       alignment: Alignment.center,
@@ -270,19 +180,19 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                   hintStyle: GoogleFonts.inter(color: Colors.white12, fontSize: 12.sp),
                   prefixIcon: Icon(Icons.search_rounded, color: Colors.white12, size: 18.sp),
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.03),
+                  fillColor: Colors.white.withValues(alpha: 0.03),
                   contentPadding: EdgeInsets.symmetric(vertical: 10.h),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(color: AppTheme.primary.withOpacity(0.5)),
+                    borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.5)),
                   ),
                 ),
                 onChanged: (v) => setState(() => _searchQuery = v),
@@ -293,8 +203,17 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
 
             // ─── Memos List ─────────────────────────────────────────
             Expanded(
-              child: _filtered.isEmpty
-                  ? Center(
+              child: memosAsync.when(
+                data: (memos) {
+                  final filtered = memos.where((m) {
+                    final matchSearch = m.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                        m.content.toLowerCase().contains(_searchQuery.toLowerCase());
+                    final matchCat = _activeCategory == 'All' || m.category == _activeCategory;
+                    return matchSearch && matchCat;
+                  }).toList();
+
+                  if (filtered.isEmpty) {
+                    return Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -309,43 +228,57 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                           )),
                         ],
                       ),
-                    )
-                  : ListView(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w),
-                      children: [
-                        if (pinned.isNotEmpty) ...[
-                          Row(
-                            children: [
-                              Icon(Icons.push_pin_rounded, size: 14.sp, color: AppTheme.primary),
-                              SizedBox(width: 6.w),
-                              Text('PRIORITY SYNC', style: GoogleFonts.outfit(
-                                fontSize: 11.sp, fontWeight: FontWeight.w800, color: Colors.white,
-                                letterSpacing: 2,
-                              )),
-                            ],
-                          ),
-                          SizedBox(height: 8.h),
-                          ...pinned.map((m) => _buildMemoCard(m)),
-                          SizedBox(height: 16.h),
-                        ],
+                    );
+                  }
+
+                  final pinned = filtered.where((m) => m.isPinned).toList();
+                  final others = filtered.where((m) => !m.isPinned).toList();
+
+                  return ListView(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    children: [
+                      if (pinned.isNotEmpty) ...[
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('THOUGHT RESERVOIR', style: GoogleFonts.outfit(
+                            Icon(Icons.push_pin_rounded, size: 14.sp, color: AppTheme.primary),
+                            SizedBox(width: 6.w),
+                            Text('PRIORITY SYNC', style: GoogleFonts.outfit(
                               fontSize: 11.sp, fontWeight: FontWeight.w800, color: Colors.white,
                               letterSpacing: 2,
-                            )),
-                            Text('${_filtered.length} Units', style: GoogleFonts.outfit(
-                              fontSize: 10.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted,
-                              letterSpacing: 1.5,
                             )),
                           ],
                         ),
                         SizedBox(height: 8.h),
-                        ...others.map((m) => _buildMemoCard(m)),
-                        SizedBox(height: 80.h),
+                        ...pinned.map((m) => _buildMemoCard(m)),
+                        SizedBox(height: 16.h),
                       ],
-                    ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('THOUGHT RESERVOIR', style: GoogleFonts.outfit(
+                            fontSize: 11.sp, fontWeight: FontWeight.w800, color: Colors.white,
+                            letterSpacing: 2,
+                          )),
+                          Text('${filtered.length} Units', style: GoogleFonts.outfit(
+                            fontSize: 10.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted,
+                            letterSpacing: 1.5,
+                          )),
+                        ],
+                      ),
+                      SizedBox(height: 8.h),
+                      ...others.map((m) => _buildMemoCard(m)),
+                      SizedBox(height: 80.h),
+                    ],
+                  );
+                },
+                loading: () => Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  child: const HFShimmerList(height: 100, count: 5),
+                ),
+                error: (e, _) => HFErrorState(
+                  onRetry: () => ref.refresh(memosProvider),
+                ),
+              ),
             ),
           ],
         ),
@@ -353,14 +286,14 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
     );
   }
 
-  Widget _buildMemoCard(Memo memo) {
+  Widget _buildMemoCard(MemoModel memo) {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
-          color: memo.isPinned ? AppTheme.primary.withOpacity(0.3) : AppTheme.surfaceBorder,
+          color: memo.isPinned ? AppTheme.primary.withValues(alpha: 0.3) : AppTheme.surfaceBorder,
         ),
       ),
       child: Column(
@@ -395,10 +328,10 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                           Container(
                             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
+                              color: Colors.white.withValues(alpha: 0.05),
                               borderRadius: BorderRadius.circular(6.r),
                             ),
-                            child: Text(memo.category, style: GoogleFonts.outfit(
+                            child: Text(memo.category ?? 'Uncategorized', style: GoogleFonts.outfit(
                               fontSize: 8.sp, fontWeight: FontWeight.w800, color: AppTheme.primary,
                               letterSpacing: 1.5,
                             )),
@@ -407,11 +340,11 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => _togglePin(memo.id),
+                      onTap: () => ref.read(memosProvider.notifier).togglePin(memo.id, memo.isPinned),
                       child: Container(
                         padding: EdgeInsets.all(6.w),
                         decoration: BoxDecoration(
-                          color: memo.isPinned ? AppTheme.primary.withOpacity(0.1) : Colors.transparent,
+                          color: memo.isPinned ? AppTheme.primary.withValues(alpha: 0.1) : Colors.transparent,
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Icon(Icons.push_pin_rounded,
@@ -427,7 +360,7 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                   fontSize: 13.sp, color: AppTheme.textMuted, height: 1.5,
                 ), maxLines: 4, overflow: TextOverflow.ellipsis),
                 SizedBox(height: 12.h),
-                Container(height: 1, color: Colors.white.withOpacity(0.05)),
+                Container(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 SizedBox(height: 10.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -449,7 +382,7 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                           child: Container(
                             padding: EdgeInsets.all(6.w),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.03),
+                              color: Colors.white.withValues(alpha: 0.03),
                               borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Icon(Icons.edit_rounded, size: 14.sp, color: Colors.white24),
@@ -457,11 +390,11 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                         ),
                         SizedBox(width: 6.w),
                         GestureDetector(
-                          onTap: () => _deleteMemo(memo.id),
+                          onTap: () => ref.read(memosProvider.notifier).removeMemo(memo.id),
                           child: Container(
                             padding: EdgeInsets.all(6.w),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.03),
+                              color: Colors.white.withValues(alpha: 0.03),
                               borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Icon(Icons.delete_rounded, size: 14.sp, color: Colors.white24),
@@ -479,7 +412,7 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
     ).animate().fadeIn(duration: 300.ms);
   }
 
-  void _showCreateModal(BuildContext context, {Memo? existing}) {
+  void _showCreateModal(BuildContext context, {MemoModel? existing}) {
     final titleC = TextEditingController(text: existing?.title ?? '');
     final contentC = TextEditingController(text: existing?.content ?? '');
     String category = existing?.category ?? 'Ideas';
@@ -495,7 +428,7 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
           decoration: BoxDecoration(
             color: AppTheme.background,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: Padding(
             padding: EdgeInsets.all(24.w),
@@ -551,9 +484,9 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                         decoration: BoxDecoration(
-                          color: isActive ? AppTheme.primary : Colors.white.withOpacity(0.03),
+                          color: isActive ? AppTheme.primary : Colors.white.withValues(alpha: 0.03),
                           borderRadius: BorderRadius.circular(8.r),
-                          border: Border.all(color: isActive ? AppTheme.primary : Colors.white.withOpacity(0.1)),
+                          border: Border.all(color: isActive ? AppTheme.primary : Colors.white.withValues(alpha: 0.1)),
                         ),
                         child: Text(c, style: GoogleFonts.outfit(
                           fontSize: 10.sp, fontWeight: FontWeight.w700,
@@ -578,9 +511,9 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                           margin: EdgeInsets.only(right: p != 'High' ? 6.w : 0),
                           padding: EdgeInsets.symmetric(vertical: 10.h),
                           decoration: BoxDecoration(
-                            color: isActive ? Colors.white.withOpacity(0.1) : Colors.white.withOpacity(0.03),
+                            color: isActive ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.03),
                             borderRadius: BorderRadius.circular(10.r),
-                            border: Border.all(color: isActive ? Colors.white.withOpacity(0.2) : Colors.white.withOpacity(0.1)),
+                            border: Border.all(color: isActive ? Colors.white.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.1)),
                           ),
                           alignment: Alignment.center,
                           child: Text(p, style: GoogleFonts.outfit(
@@ -603,7 +536,7 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                         child: Container(
                           padding: EdgeInsets.symmetric(vertical: 16.h),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                             borderRadius: BorderRadius.circular(16.r),
                           ),
                           alignment: Alignment.center,
@@ -617,31 +550,23 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
                       child: GestureDetector(
                         onTap: () {
                           if (titleC.text.trim().isEmpty) return;
+                          final data = {
+                            'title': titleC.text.trim(),
+                            'content': contentC.text.trim(),
+                            'category': category,
+                            'priority': priority,
+                          };
                           if (existing != null) {
-                            setState(() {
-                              existing.title = titleC.text.trim();
-                              existing.content = contentC.text.trim();
-                              existing.category = category;
-                              existing.priority = priority;
-                            });
+                            ref.read(memosProvider.notifier).updateMemo(existing.id, data);
                           } else {
-                            setState(() {
-                              _memos.insert(0, Memo(
-                                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                                title: titleC.text.trim(),
-                                content: contentC.text.trim(),
-                                category: category,
-                                priority: priority,
-                              ));
-                            });
+                            ref.read(memosProvider.notifier).addMemo(data);
                           }
-                          _saveMemos();
                           Navigator.pop(ctx);
                         },
                         child: Container(
                           padding: EdgeInsets.symmetric(vertical: 16.h),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [AppTheme.primary, const Color(0xFFE85D04)]),
+                            gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFFE85D04)]),
                             borderRadius: BorderRadius.circular(16.r),
                           ),
                           alignment: Alignment.center,
@@ -665,19 +590,19 @@ class _MemoScreenState extends ConsumerState<MemoScreen> {
     hintText: hint,
     hintStyle: GoogleFonts.inter(color: Colors.white12, fontSize: 13.sp),
     filled: true,
-    fillColor: Colors.white.withOpacity(0.03),
+    fillColor: Colors.white.withValues(alpha: 0.03),
     contentPadding: EdgeInsets.all(14.w),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14.r),
-      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14.r),
-      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14.r),
-      borderSide: BorderSide(color: AppTheme.primary.withOpacity(0.5)),
+      borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.5)),
     ),
   );
 }

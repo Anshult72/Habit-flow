@@ -4,50 +4,51 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
 
+import '../../core/widgets/hf_premium_widgets.dart';
+
 class SettingsModal extends ConsumerWidget {
   const SettingsModal({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: EdgeInsets.only(top: 24.h, bottom: MediaQuery.of(context).padding.bottom + 24.h),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0A0A),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
-        border: const Border(top: BorderSide(color: AppTheme.surfaceBorder)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(2.r),
+    return HFGlassCard(
+      borderRadius: AppTheme.radiusXxl,
+      padding: EdgeInsets.zero,
+      child: Container(
+        padding: EdgeInsets.only(top: 16.h, bottom: MediaQuery.of(context).padding.bottom + 24.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
               ),
             ),
-          ),
-          SizedBox(height: 24.h),
-          
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24.w),
-            child: Text('SETTINGS', style: GoogleFonts.outfit(fontSize: 16.sp, fontWeight: FontWeight.w800, color: AppTheme.textMain, letterSpacing: 1.5)),
-          ),
-          SizedBox(height: 24.h),
-
-          _buildToggle(context, 'Push Notifications', 'Alerts for Duels & Squads', true),
-          _buildToggle(context, 'Haptic Feedback', 'Vibrations on success', true),
-          _buildToggle(context, 'Dark Theme', 'Enforced by protocol', true, disabled: true),
-          
-          SizedBox(height: 16.h),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24.w),
-            child: Text('More settings coming in Phase 7', style: GoogleFonts.inter(color: Colors.white38, fontSize: 11.sp)),
-          ),
-        ],
+            SizedBox(height: 24.h),
+            
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Text('SETTINGS', style: GoogleFonts.outfit(fontSize: 16.sp, fontWeight: FontWeight.w800, color: AppTheme.textMain, letterSpacing: 1.5)),
+            ),
+            SizedBox(height: 24.h),
+  
+            _buildToggle(context, 'Push Notifications', 'Alerts for Duels & Squads', true),
+            _buildToggle(context, 'Haptic Feedback', 'Vibrations on success', true),
+            _buildToggle(context, 'Dark Theme', 'Enforced by protocol', true, disabled: true),
+            
+            SizedBox(height: 24.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Text('More settings coming in Phase 7', style: GoogleFonts.inter(color: Colors.white38, fontSize: 11.sp)),
+            ),
+          ],
+        ),
       ),
     );
   }

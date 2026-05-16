@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../services/auth_service.dart';
 import '../features/auth/login_screen.dart';
+import '../features/auth/signup_screen.dart';
 import '../features/auth/splash_screen.dart';
 import '../features/main_layout.dart';
 import '../features/onboarding/onboarding_screen.dart';
@@ -31,11 +32,11 @@ class RouterNotifier extends ChangeNotifier {
     }
 
     final isLoggedIn = authState.status == AuthStatus.authenticated;
-    final isOnAuthPage = currentPath == '/login' || currentPath == '/' || currentPath == '/onboarding';
+    final isOnAuthPage = currentPath == '/login' || currentPath == '/signup' || currentPath == '/' || currentPath == '/onboarding';
 
-    // Not logged in → force to onboarding or login
+    // Not logged in → force to onboarding or login/signup
     if (!isLoggedIn) {
-      if (currentPath == '/onboarding' || currentPath == '/login') {
+      if (currentPath == '/onboarding' || currentPath == '/login' || currentPath == '/signup') {
         return null;
       }
       return '/onboarding';
@@ -73,6 +74,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) => const SignupScreen(),
       ),
       GoRoute(
         path: '/dashboard',

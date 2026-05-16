@@ -19,8 +19,17 @@ const WORDS = [
 
 export default function FeaturesHero() {
   const [index, setIndex] = useState(0);
+  const [particles, setParticles] = useState([]);
 
   useEffect(() => {
+    const newParticles = [...Array(20)].map(() => ({
+      duration: 4 + Math.random() * 4,
+      delay: Math.random() * 5,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`
+    }));
+    setTimeout(() => setParticles(newParticles), 0);
+
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % WORDS.length);
     }, 2500);
@@ -35,7 +44,7 @@ export default function FeaturesHero() {
         <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-[#E85D04]/3 rounded-full blur-[100px] opacity-20" />
 
         <div className="absolute inset-0 opacity-20">
-          {[...Array(20)].map((_, i) => (
+          {particles.map((p, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0 }}
@@ -45,14 +54,14 @@ export default function FeaturesHero() {
                 y: [0, -40, 0]
               }}
               transition={{
-                duration: 4 + Math.random() * 4,
+                duration: p.duration,
                 repeat: Infinity,
-                delay: Math.random() * 5
+                delay: p.delay
               }}
               className="absolute w-1 h-1 bg-white rounded-full"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`
+                left: p.left,
+                top: p.top
               }}
             />
           ))}

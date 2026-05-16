@@ -8,12 +8,19 @@ import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'routes/app_router.dart';
 
+import 'core/storage/local_storage_service.dart';
+import 'core/sync/sync_manager.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize local storage (settings, cached preferences)
+  // Initialize Hive
   await Hive.initFlutter();
   await Hive.openBox('settings');
+
+  // Initialize LocalStorageService
+  final localStorageService = LocalStorageService();
+  await localStorageService.init();
 
   // Initialize Supabase Auth (same project as web frontend)
   await Supabase.initialize(
@@ -21,14 +28,35 @@ void main() async {
     anonKey: AppConstants.supabaseAnonKey,
   );
 
-  runApp(const ProviderScope(child: HabitFlowApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        localStorageProvider.overrideWithValue(localStorageService),
+      ],
+      child: const HabitFlowApp(),
+    ),
+  );
 }
 
-class HabitFlowApp extends ConsumerWidget {
+class HabitFlowApp extends ConsumerStatefulWidget {
   const HabitFlowApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HabitFlowApp> createState() => _HabitFlowAppState();
+}
+
+class _HabitFlowAppState extends ConsumerState<HabitFlowApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize sync manager on app start
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(syncManagerProvider).init();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
 
     return ScreenUtilInit(
@@ -41,6 +69,14 @@ class HabitFlowApp extends ConsumerWidget {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.darkTheme,
           routerConfig: router,
+          builder: (context, child) {
+            return ScrollConfiguration(
+              behavior: const ScrollBehavior().copyWith(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              ),
+              child: child!,
+            );
+          },
         );
       },
     );

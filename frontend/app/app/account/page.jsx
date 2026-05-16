@@ -34,13 +34,13 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (user) {
-      setFormData({
+      setTimeout(() => setFormData({
         name: user.name || '',
         dob: user.dob ? new Date(user.dob).toISOString().split('T')[0] : '',
         city: user.city || '',
         state: user.state || '',
         avatarUrl: user.avatarUrl || ''
-      });
+      }), 0);
     }
   }, [user]);
 

@@ -31,6 +31,40 @@ class DuelModel {
     this.requests,
   });
 
+  DuelModel copyWith({
+    String? id,
+    String? inviteCode,
+    int? entryXP,
+    int? durationDays,
+    String? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? winnerId,
+    String? createdBy,
+    String? opponentId,
+    Map<String, dynamic>? creator,
+    Map<String, dynamic>? opponent,
+    List<DuelParticipantModel>? participants,
+    List<dynamic>? requests,
+  }) {
+    return DuelModel(
+      id: id ?? this.id,
+      inviteCode: inviteCode ?? this.inviteCode,
+      entryXP: entryXP ?? this.entryXP,
+      durationDays: durationDays ?? this.durationDays,
+      status: status ?? this.status,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      winnerId: winnerId ?? this.winnerId,
+      createdBy: createdBy ?? this.createdBy,
+      opponentId: opponentId ?? this.opponentId,
+      creator: creator ?? this.creator,
+      opponent: opponent ?? this.opponent,
+      participants: participants ?? this.participants,
+      requests: requests ?? this.requests,
+    );
+  }
+
   factory DuelModel.fromJson(Map<String, dynamic> json) {
     return DuelModel(
       id: json['id'],
@@ -50,6 +84,25 @@ class DuelModel {
           .toList(),
       requests: json['requests'] as List?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'inviteCode': inviteCode,
+      'entryXP': entryXP,
+      'durationDays': durationDays,
+      'status': status,
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'winnerId': winnerId,
+      'createdBy': createdBy,
+      'opponentId': opponentId,
+      'creator': creator,
+      'opponent': opponent,
+      'participants': participants.map((e) => e.toJson()).toList(),
+      'requests': requests,
+    };
   }
 }
 
@@ -73,5 +126,14 @@ class DuelParticipantModel {
       userId: json['userId'],
       user: json['user'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'progress': progress,
+      'userId': userId,
+      'user': user,
+    };
   }
 }

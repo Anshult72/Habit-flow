@@ -152,14 +152,14 @@ export default function MissionCountdown() {
                   <TrendingUp size={16} />
                   <span className="text-[10px] font-black uppercase tracking-widest">Efficiency Up</span>
                 </div>
-                <p className="text-sm font-medium italic">"Your consistency improved this mission by 23% this week."</p>
+                <p className="text-sm font-medium italic">&quot;Your consistency improved this mission by 23% this week.&quot;</p>
               </div>
               <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
                 <div className="flex items-center gap-2 text-[#FF6B2C]">
                   <Activity size={16} />
                   <span className="text-[10px] font-black uppercase tracking-widest">Impact Core</span>
                 </div>
-                <p className="text-sm font-medium italic">"Gym habits contribute most to your 'Dream Physique' mission."</p>
+                <p className="text-sm font-medium italic">&quot;Gym habits contribute most to your &apos;Dream Physique&apos; mission.&quot;</p>
               </div>
             </div>
           </div>
@@ -239,7 +239,7 @@ function MissionCard({ mission, index, onOpenVision, onDelete }) {
         </div>
         <div className="space-y-1">
           <h3 className="text-2xl font-display font-bold text-white group-hover:text-[#FF6B2C] transition-colors">{mission.title}</h3>
-          <p className="text-text-muted text-sm line-clamp-2 leading-relaxed italic">"{mission.motivationQuote}"</p>
+          <p className="text-text-muted text-sm line-clamp-2 leading-relaxed italic">&quot;{mission.motivationQuote}&quot;</p>
         </div>
       </div>
 
@@ -516,7 +516,7 @@ function VisionMode({ mission, onClose }) {
             {mission.title}
           </h2>
           <p className="text-3xl text-white/40 font-light italic">
-            "{mission.motivationQuote}"
+            &quot;{mission.motivationQuote}&quot;
           </p>
         </motion.div>
 

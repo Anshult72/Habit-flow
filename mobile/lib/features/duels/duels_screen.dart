@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/hf_premium_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../services/duel_service.dart';
 import '../../services/user_service.dart';
@@ -61,15 +64,12 @@ class DuelsScreen extends ConsumerWidget {
                     },
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2)),
-                error: (e, _) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Sync failed', style: GoogleFonts.inter(color: AppTheme.textMain)),
-                      TextButton(onPressed: () => ref.invalidate(duelsProvider), child: Text('RETRY', style: GoogleFonts.outfit(color: AppTheme.primary, fontWeight: FontWeight.w700))),
-                    ],
-                  ),
+                loading: () => Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  child: const HFShimmerList(height: 100, count: 4),
+                ),
+                error: (e, _) => HFErrorState(
+                  onRetry: () => ref.invalidate(duelsProvider),
                 ),
                 ),
               ),
@@ -99,63 +99,107 @@ class DuelsScreen extends ConsumerWidget {
     final isCreator = currentUserId != null && duel.createdBy == currentUserId;
     final isPendingReceiver = duel.status == 'pending' && isOpponent;
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
+    return HFGlassCard(
+      borderRadius: AppTheme.radiusXl,
       padding: EdgeInsets.all(20.w),
-      decoration: AppTheme.glassCard(borderRadius: AppTheme.radiusXl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('1V1 CHALLENGE', style: GoogleFonts.outfit(fontSize: 10.sp, fontWeight: FontWeight.w700, color: AppTheme.primary, letterSpacing: 1)),
+              Text('1V1 CHALLENGE',
+                  style: GoogleFonts.outfit(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primary,
+                      letterSpacing: 1)),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                 decoration: BoxDecoration(
                   color: _getStatusColor(duel.status).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(4.r),
                 ),
-                child: Text(duel.status.toUpperCase(), style: GoogleFonts.outfit(fontSize: 8.sp, color: _getStatusColor(duel.status), fontWeight: FontWeight.w700, letterSpacing: 1)),
+                child: Text(duel.status.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                        fontSize: 8.sp,
+                        color: _getStatusColor(duel.status),
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1)),
               ),
             ],
           ),
           SizedBox(height: 16.h),
           Row(
             children: [
-              _buildAvatar(isCreator ? 'YOU' : (duel.creator?['name']?.toString().toUpperCase() ?? 'CREATOR'), duel.creator?['avatarUrl']),
+              _buildAvatar(
+                  isCreator
+                      ? 'YOU'
+                      : (duel.creator?['name']?.toString().toUpperCase() ??
+                          'CREATOR'),
+                  duel.creator?['avatarUrl']),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.w),
-                child: Text('VS', style: GoogleFonts.outfit(fontSize: 18.sp, fontWeight: FontWeight.w800, color: Colors.white24)),
+                child: Text('VS',
+                    style: GoogleFonts.outfit(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white24)),
               ),
-              _buildAvatar(isOpponent ? 'YOU' : (duel.opponent?['name']?.toString().toUpperCase() ?? 'OPPONENT'), duel.opponent?['avatarUrl']),
+              _buildAvatar(
+                  isOpponent
+                      ? 'YOU'
+                      : (duel.opponent?['name']?.toString().toUpperCase() ??
+                          'OPPONENT'),
+                  duel.opponent?['avatarUrl']),
             ],
           ),
           SizedBox(height: 14.h),
-          Text('Stakes: ${duel.entryXP} XP  •  ${duel.durationDays} Days', style: GoogleFonts.inter(color: AppTheme.textMuted, fontSize: 12.sp)),
-          
+          Text('Stakes: ${duel.entryXP} XP  •  ${duel.durationDays} Days',
+              style: GoogleFonts.inter(
+                  color: AppTheme.textMuted, fontSize: 12.sp)),
           if (isPendingReceiver) ...[
             SizedBox(height: 16.h),
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _respondToDuel(ref, context, duel, false),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger.withValues(alpha: 0.2), foregroundColor: AppTheme.danger),
-                    child: Text('DECLINE', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                  child: HFScalableButton(
+                    onTap: () => _respondToDuel(ref, context, duel, false),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      decoration: BoxDecoration(
+                          color: AppTheme.danger.withValues(alpha: 0.2),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radiusMd)),
+                      child: Center(
+                          child: Text('DECLINE',
+                              style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.danger))),
+                    ),
                   ),
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _respondToDuel(ref, context, duel, true),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success.withValues(alpha: 0.2), foregroundColor: AppTheme.success),
-                    child: Text('ACCEPT', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                  child: HFScalableButton(
+                    onTap: () => _respondToDuel(ref, context, duel, true),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      decoration: BoxDecoration(
+                          color: AppTheme.success.withValues(alpha: 0.2),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radiusMd)),
+                      child: Center(
+                          child: Text('ACCEPT',
+                              style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.success))),
+                    ),
                   ),
                 ),
               ],
             ),
-          ]
+          ],
         ],
       ),
     ).animate().fadeIn(delay: Duration(milliseconds: 80 * index), duration: 400.ms).slideY(begin: 0.05);
@@ -163,6 +207,7 @@ class DuelsScreen extends ConsumerWidget {
 
   Future<void> _respondToDuel(WidgetRef ref, BuildContext context, DuelModel duel, bool accept) async {
     try {
+      HapticFeedback.mediumImpact();
       final requestList = duel.requests;
       if (requestList == null || requestList.isEmpty) {
         throw Exception('No pending request found for this duel');
@@ -173,6 +218,7 @@ class DuelsScreen extends ConsumerWidget {
       ref.invalidate(duelsProvider);
       ref.invalidate(userProfileProvider); // XP might have changed
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e', style: const TextStyle(color: Colors.white)), backgroundColor: AppTheme.danger));
     }
   }

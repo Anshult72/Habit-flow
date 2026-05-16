@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 /// Production-grade auth service wrapping Supabase Auth.
 ///
@@ -30,7 +32,7 @@ class AuthService {
       password: password,
     );
     if (response.session == null) {
-      throw supa.AuthException('Sign in failed: No session returned');
+      throw const supa.AuthException('Sign in failed: No session returned');
     }
     debugPrint('[AuthService] Signed in: ${response.user?.email}');
     return response;
@@ -47,11 +49,32 @@ class AuthService {
     return response;
   }
 
+  // ─── Google Auth ─────────────────────────────────────────────────────
+
+  Future<void> signInWithGoogle() async {
+    await _client.auth.signInWithOAuth(
+      supa.OAuthProvider.google,
+    );
+  }
+
   // ─── Sign Out ────────────────────────────────────────────────────────
 
   Future<void> signOut() async {
+    // 1. Sign out from Supabase
     await _client.auth.signOut();
-    debugPrint('[AuthService] Signed out');
+    
+    // 2. Clear local caches
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      
+      final settingsBox = Hive.box('settings');
+      await settingsBox.clear();
+    } catch (e) {
+      debugPrint('[AuthService] Error clearing local caches: $e');
+    }
+    
+    debugPrint('[AuthService] Signed out & Caches cleared');
   }
 
   // ─── Session Recovery ────────────────────────────────────────────────

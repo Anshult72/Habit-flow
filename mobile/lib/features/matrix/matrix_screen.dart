@@ -1,30 +1,24 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../../core/widgets/hf_premium_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/matrix_model.dart';
+import '../../services/matrix_service.dart';
 
-class MatrixTask {
-  final String id;
-  String title, desc;
-  int quadrant;
-  bool completed;
-  MatrixTask({required this.id, required this.title, this.desc = '', this.quadrant = 1, this.completed = false});
-  Map<String, dynamic> toJson() => {'id': id, 'title': title, 'desc': desc, 'quadrant': quadrant, 'completed': completed};
-  factory MatrixTask.fromJson(Map<String, dynamic> j) => MatrixTask(id: j['id'], title: j['title'], desc: j['desc'] ?? '', quadrant: j['quadrant'] ?? 1, completed: j['completed'] ?? false);
-}
-
-class _Quad { final int id; final String title, subtitle; final Color color; final IconData icon;
+class _Quad { 
+  final int id; 
+  final String title, subtitle; 
+  final Color color; 
+  final IconData icon;
   const _Quad(this.id, this.title, this.subtitle, this.color, this.icon);
 }
 
 const _quads = [
   _Quad(1, 'Do First', 'Urgent & Important', Color(0xFFFF4D4D), Icons.bolt_rounded),
   _Quad(2, 'Schedule', 'Not Urgent & Important', Color(0xFFFFD700), Icons.calendar_today_rounded),
-  _Quad(3, 'Delegate', 'Urgent & Unimportant', Color(0xFF3B82F6), Icons.flag_rounded),
+  _Quad(3, 'Delegate', 'Urgent & Unimportant', Color(0xFF3B82F6), Icons.adjust_rounded),
   _Quad(4, 'Eliminate', 'Not Urgent & Unimportant', Color(0xFF10B981), Icons.coffee_rounded),
 ];
 
@@ -35,157 +29,537 @@ class MatrixScreen extends ConsumerStatefulWidget {
 }
 
 class _MatrixScreenState extends ConsumerState<MatrixScreen> {
-  List<MatrixTask> _tasks = [];
-
-  @override
-  void initState() { super.initState(); _load(); }
-
-  Future<void> _load() async {
-    final p = await SharedPreferences.getInstance();
-    final r = p.getString('habitflow-matrix');
-    if (r != null) setState(() => _tasks = (jsonDecode(r) as List).map((e) => MatrixTask.fromJson(e)).toList());
-  }
-
-  Future<void> _save() async {
-    final p = await SharedPreferences.getInstance();
-    await p.setString('habitflow-matrix', jsonEncode(_tasks.map((e) => e.toJson()).toList()));
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: AppTheme.background, body: SafeArea(child: Column(children: [
-      // Header
-      Padding(padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h), child: Row(children: [
-        _backBtn(context),
-        SizedBox(width: 16.w),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('STRATEGIC PRIORITY', style: GoogleFonts.outfit(fontSize: 9.sp, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: 2.5)),
-          Text('Eisenhower Matrix', style: GoogleFonts.outfit(fontSize: 22.sp, fontWeight: FontWeight.w800, color: Colors.white)),
-        ])),
-        _addBtn(() => _showAdd(context)),
-      ])).animate().fadeIn(duration: 400.ms),
+    final matrixAsync = ref.watch(matrixProvider);
 
-      Expanded(child: ListView(padding: EdgeInsets.symmetric(horizontal: 20.w), children: [
-        ..._quads.map((q) {
-          final qTasks = _tasks.where((t) => t.quadrant == q.id).toList();
-          return Container(margin: EdgeInsets.only(bottom: 16.h), decoration: BoxDecoration(
-            color: q.color.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: q.color.withValues(alpha: 0.2))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // Quadrant Header
-              Container(padding: EdgeInsets.all(16.w), decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.2), borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
-                child: Row(children: [
-                  Container(padding: EdgeInsets.all(10.w), decoration: BoxDecoration(
-                    color: q.color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12.r)),
-                    child: Icon(q.icon, size: 20.sp, color: q.color)),
-                  SizedBox(width: 12.w),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(q.title, style: GoogleFonts.outfit(fontSize: 16.sp, fontWeight: FontWeight.w700, color: Colors.white)),
-                    Text(q.subtitle, style: GoogleFonts.outfit(fontSize: 9.sp, fontWeight: FontWeight.w600, color: q.color.withValues(alpha: 0.6), letterSpacing: 1)),
-                  ])),
-                  Text('${qTasks.where((t) => !t.completed).length}', style: GoogleFonts.outfit(fontSize: 14.sp, fontWeight: FontWeight.w700, color: Colors.white38)),
-                ])),
-              // Tasks
-              if (qTasks.isEmpty) Padding(padding: EdgeInsets.all(20.w), child: Center(child: Column(children: [
-                Icon(Icons.add_circle_outline_rounded, size: 28.sp, color: Colors.white10),
-                SizedBox(height: 4.h),
-                Text('No tasks', style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.white10)),
-              ])))
-              else ...qTasks.map((t) => _taskTile(t, q.color)),
-            ]));
-        }),
-        SizedBox(height: 80.h),
-      ])),
-    ])));
+    return Scaffold(
+      backgroundColor: const Color(0xFF000000), 
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top App Bar Area
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: EdgeInsets.all(8.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18.sp),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(12.w),
+                          decoration: const BoxDecoration(
+                            color: AppTheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.radar_rounded, color: Colors.white, size: 28.sp),
+                        ),
+                        SizedBox(width: 16.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Eisenhower\nMatrix', style: GoogleFonts.outfit(fontSize: 32.sp, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1, letterSpacing: -0.5)),
+                              SizedBox(height: 12.h),
+                              Text('Master your focus through strategic\npriority management.', style: GoogleFonts.inter(fontSize: 14.sp, color: Colors.white54, height: 1.4)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 32.h),
+
+                    // Add Button
+                    GestureDetector(
+                      onTap: () => _showAdd(context),
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFFE85D04)]),
+                          borderRadius: BorderRadius.circular(16.r),
+                          boxShadow: [
+                            BoxShadow(color: AppTheme.primary.withValues(alpha: 0.25), blurRadius: 20, offset: const Offset(0, 8)),
+                          ]
+                        ),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add_rounded, color: Colors.white, size: 22.sp),
+                            SizedBox(width: 8.w),
+                            Text('Add High Priority Task', style: GoogleFonts.outfit(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 32.h),
+
+                    // Quadrants
+                    matrixAsync.when(
+                      data: (tasks) => Column(
+                        children: _quads.map((q) {
+                          final qTasks = tasks.where((t) => t.quadrant == q.id).toList();
+                          return _buildQuadrantCard(q, qTasks);
+                        }).toList(),
+                      ),
+                      loading: () => Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: const HFShimmerList(height: 80, count: 4),
+                      ),
+                      error: (e, _) => HFErrorState(
+                        onRetry: () => ref.refresh(matrixProvider),
+                      ),
+                    ),
+
+                    SizedBox(height: 120.h),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  Widget _taskTile(MatrixTask t, Color c) => Container(
-    margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-    padding: EdgeInsets.all(12.w),
-    decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(14.r),
-      border: Border.all(color: AppTheme.surfaceBorder)),
-    child: Row(children: [
-      GestureDetector(onTap: () { setState(() => t.completed = !t.completed); _save(); },
-        child: Icon(t.completed ? Icons.check_circle_rounded : Icons.circle_outlined, size: 20.sp,
-          color: t.completed ? c : Colors.white24)),
-      SizedBox(width: 10.w),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(t.title, style: GoogleFonts.outfit(fontSize: 14.sp, fontWeight: FontWeight.w600,
-          color: t.completed ? Colors.white24 : Colors.white,
-          decoration: t.completed ? TextDecoration.lineThrough : null)),
-        if (t.desc.isNotEmpty) Text(t.desc, style: GoogleFonts.inter(fontSize: 11.sp, color: AppTheme.textMuted),
-          maxLines: 1, overflow: TextOverflow.ellipsis),
-      ])),
-      GestureDetector(onTap: () { setState(() => _tasks.removeWhere((x) => x.id == t.id)); _save(); },
-        child: Icon(Icons.close_rounded, size: 16.sp, color: Colors.white10)),
-    ]));
+  Widget _buildQuadrantCard(_Quad q, List<MatrixModel> tasks) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 24.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111),
+        borderRadius: BorderRadius.circular(32.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        children: [
+          // Header Section
+          Container(
+            padding: EdgeInsets.all(28.w),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [q.color.withValues(alpha: 0.15), Colors.transparent],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: q.color.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Icon(q.icon, color: q.color, size: 24.sp),
+                ),
+                SizedBox(width: 16.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(q.title, style: GoogleFonts.outfit(color: Colors.white, fontSize: 24.sp, fontWeight: FontWeight.w900)),
+                      Text(q.subtitle.toUpperCase(), style: GoogleFonts.outfit(color: q.color, fontSize: 10.sp, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+                    ],
+                  ),
+                ),
+                Column(
+                  children: [
+                    Text('${tasks.length}', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 18.sp, fontWeight: FontWeight.w800)),
+                    Text('Tasks', style: GoogleFonts.outfit(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                SizedBox(width: 16.w),
+                Container(
+                  padding: EdgeInsets.all(8.w),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Icon(Icons.info_outline_rounded, color: Colors.white38, size: 16.sp),
+                ),
+              ],
+            ),
+          ),
+          
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.05)),
+          
+          // Tasks or Empty State
+          Padding(
+            padding: EdgeInsets.all(28.w),
+            child: tasks.isEmpty 
+              ? Column(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      child: Icon(Icons.add_rounded, color: Colors.white38, size: 24.sp),
+                    ),
+                    SizedBox(height: 16.h),
+                    Text('No tasks in this quadrant', style: GoogleFonts.inter(color: Colors.white54, fontSize: 13.sp)),
+                    SizedBox(height: 8.h),
+                    Text('FOCUS ON WHAT MATTERS', style: GoogleFonts.outfit(color: Colors.white24, fontSize: 10.sp, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+                  ],
+                )
+              : Column(
+                  children: tasks.map((t) => _taskTile(t, q.color)).toList(),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _taskTile(MatrixModel t, Color c) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => ref.read(matrixProvider.notifier).toggleCompletion(t.id, t.completed),
+            child: Container(
+              padding: EdgeInsets.all(4.w),
+              decoration: BoxDecoration(
+                color: t.completed ? c.withValues(alpha: 0.2) : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(color: t.completed ? c : Colors.white24),
+              ),
+              child: Icon(Icons.check_rounded, size: 14.sp, color: t.completed ? c : Colors.transparent),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.title, 
+                  style: GoogleFonts.inter(
+                    fontSize: 14.sp, 
+                    fontWeight: FontWeight.w600,
+                    color: t.completed ? Colors.white38 : Colors.white,
+                    decoration: t.completed ? TextDecoration.lineThrough : null
+                  )
+                ),
+                if (t.desc.isNotEmpty) ...[
+                  SizedBox(height: 2.h),
+                  Text(
+                    t.desc, 
+                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.white38),
+                    maxLines: 1, 
+                    overflow: TextOverflow.ellipsis
+                  ),
+                ]
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => ref.read(matrixProvider.notifier).removeTask(t.id),
+            child: Icon(Icons.close_rounded, size: 18.sp, color: Colors.white24),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showAdd(BuildContext context) {
-    final tc = TextEditingController(); final dc = TextEditingController();
+    final tc = TextEditingController(); 
+    final dc = TextEditingController();
     String urg = 'urgent', imp = 'important';
-    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, ss) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(color: AppTheme.background, borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1))),
-        padding: EdgeInsets.all(24.w),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Center(child: Container(width: 40.w, height: 4.h, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2.r)))),
-          SizedBox(height: 20.h),
-          Text('Strategic Init', style: GoogleFonts.outfit(fontSize: 24.sp, fontWeight: FontWeight.w800, color: Colors.white)),
-          SizedBox(height: 20.h),
-          TextField(controller: tc, style: GoogleFonts.inter(color: Colors.white, fontSize: 14.sp), decoration: _dec('Task title...')),
-          SizedBox(height: 12.h),
-          TextField(controller: dc, maxLines: 2, style: GoogleFonts.inter(color: Colors.white, fontSize: 13.sp), decoration: _dec('Details...')),
-          SizedBox(height: 16.h),
-          Text('URGENCY', style: GoogleFonts.outfit(fontSize: 9.sp, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: 2)),
-          SizedBox(height: 6.h),
-          Row(children: ['urgent', 'not-urgent'].map((o) => Expanded(child: GestureDetector(
-            onTap: () => ss(() => urg = o),
-            child: Container(margin: EdgeInsets.only(right: o == 'urgent' ? 6.w : 0),
-              padding: EdgeInsets.symmetric(vertical: 12.h),
-              decoration: BoxDecoration(color: urg == o ? AppTheme.primary.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.03),
-                borderRadius: BorderRadius.circular(12.r), border: Border.all(color: urg == o ? AppTheme.primary : Colors.white.withValues(alpha: 0.1))),
-              alignment: Alignment.center,
-              child: Text(o.replaceAll('-', ' ').toUpperCase(), style: GoogleFonts.outfit(fontSize: 10.sp, fontWeight: FontWeight.w700, color: urg == o ? Colors.white : Colors.white38)))))).toList()),
-          SizedBox(height: 12.h),
-          Text('IMPORTANCE', style: GoogleFonts.outfit(fontSize: 9.sp, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: 2)),
-          SizedBox(height: 6.h),
-          Row(children: ['important', 'not-important'].map((o) => Expanded(child: GestureDetector(
-            onTap: () => ss(() => imp = o),
-            child: Container(margin: EdgeInsets.only(right: o == 'important' ? 6.w : 0),
-              padding: EdgeInsets.symmetric(vertical: 12.h),
-              decoration: BoxDecoration(color: imp == o ? AppTheme.primary.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.03),
-                borderRadius: BorderRadius.circular(12.r), border: Border.all(color: imp == o ? AppTheme.primary : Colors.white.withValues(alpha: 0.1))),
-              alignment: Alignment.center,
-              child: Text(o.replaceAll('-', ' ').toUpperCase(), style: GoogleFonts.outfit(fontSize: 10.sp, fontWeight: FontWeight.w700, color: imp == o ? Colors.white : Colors.white38)))))).toList()),
-          const Spacer(),
-          GestureDetector(onTap: () {
-            if (tc.text.trim().isEmpty) return;
-            int q = 4;
-            if (urg == 'urgent' && imp == 'important') q = 1;
-            else if (urg == 'not-urgent' && imp == 'important') q = 2;
-            else if (urg == 'urgent' && imp == 'not-important') q = 3;
-            setState(() => _tasks.add(MatrixTask(id: DateTime.now().millisecondsSinceEpoch.toString(), title: tc.text.trim(), desc: dc.text.trim(), quadrant: q)));
-            _save(); Navigator.pop(ctx);
-          }, child: Container(width: double.infinity, padding: EdgeInsets.symmetric(vertical: 16.h),
-            decoration: BoxDecoration(gradient: LinearGradient(colors: [AppTheme.primary, const Color(0xFFE85D04)]), borderRadius: BorderRadius.circular(16.r)),
-            alignment: Alignment.center, child: Text('Commit to Matrix', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp)))),
-        ]))));
+    
+    showModalBottomSheet(
+      context: context, 
+      isScrollControlled: true, 
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, ss) => Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: const Color(0xFF111111), 
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          padding: EdgeInsets.all(28.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, 
+            children: [
+              Center(
+                child: Container(
+                  width: 48.w, 
+                  height: 4.h, 
+                  decoration: BoxDecoration(
+                    color: Colors.white24, 
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+              ),
+              SizedBox(height: 24.h),
+              
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(10.w),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Icon(Icons.add_rounded, color: Colors.white, size: 20.sp),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Strategic Initialization', style: GoogleFonts.outfit(fontSize: 22.sp, fontWeight: FontWeight.w900, color: Colors.white)),
+                        Text('MATRIX TASK DEPLOYMENT', style: GoogleFonts.outfit(fontSize: 9.sp, fontWeight: FontWeight.w800, color: Colors.white54, letterSpacing: 1.5)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 32.h),
+              
+              _label('OBJECTIVE TITLE'),
+              SizedBox(height: 8.h),
+              TextField(
+                controller: tc, 
+                style: GoogleFonts.inter(color: Colors.white, fontSize: 14.sp), 
+                decoration: _dec('What is your primary focus?'),
+              ),
+              SizedBox(height: 20.h),
+              
+              _label('INTELLIGENCE BRIEF'),
+              SizedBox(height: 8.h),
+              TextField(
+                controller: dc, 
+                maxLines: 3, 
+                style: GoogleFonts.inter(color: Colors.white, fontSize: 14.sp), 
+                decoration: _dec('Additional tactical details...'),
+              ),
+              SizedBox(height: 24.h),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('TIME URGENCY'),
+                        SizedBox(height: 8.h),
+                        Row(
+                          children: [
+                            Expanded(child: _toggleBtn('URGENT', urg == 'urgent', () => ss(() => urg = 'urgent'))),
+                            SizedBox(width: 8.w),
+                            Expanded(child: _toggleBtn('NOT URGENT', urg == 'not-urgent', () => ss(() => urg = 'not-urgent'))),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 16.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('VALUE IMPACT'),
+                        SizedBox(height: 8.h),
+                        Row(
+                          children: [
+                            Expanded(child: _toggleBtn('IMPORTANT', imp == 'important', () => ss(() => imp = 'important'))),
+                            SizedBox(width: 8.w),
+                            Expanded(child: _toggleBtn('NOT IMPORTANT', imp == 'not-important', () => ss(() => imp = 'not-important'))),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24.h),
+
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('TEMPORAL DEADLINE'),
+                        SizedBox(height: 8.h),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Select date...', style: GoogleFonts.inter(color: Colors.white38, fontSize: 14.sp)),
+                              Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white38, size: 20.sp),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 16.w),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('YIELD FORECAST'),
+                        SizedBox(height: 8.h),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.auto_awesome, color: AppTheme.primary, size: 16.sp),
+                                  SizedBox(width: 8.w),
+                                  Text('50 XP Reward', style: GoogleFonts.outfit(color: AppTheme.primary, fontSize: 13.sp, fontWeight: FontWeight.w800)),
+                                ],
+                              ),
+                              Icon(Icons.shield_outlined, color: AppTheme.primary.withValues(alpha: 0.5), size: 16.sp),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const Spacer(),
+              
+              Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 16.w),
+                  Expanded(
+                    flex: 2,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (tc.text.trim().isEmpty) return;
+                        int q = 4;
+                        if (urg == 'urgent' && imp == 'important') {
+                          q = 1;
+                        } else if (urg == 'not-urgent' && imp == 'important') {
+                          q = 2;
+                        } else if (urg == 'urgent' && imp == 'not-important') {
+                          q = 3;
+                        }
+                        
+                        ref.read(matrixProvider.notifier).addTask({
+                          'title': tc.text.trim(),
+                          'desc': dc.text.trim(),
+                          'quadrant': q,
+                        });
+                        Navigator.pop(ctx);
+                      }, 
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFFE85D04)]),
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text('Commit to Matrix', style: GoogleFonts.outfit(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  InputDecoration _dec(String h) => InputDecoration(hintText: h, hintStyle: GoogleFonts.inter(color: Colors.white12, fontSize: 13.sp),
-    filled: true, fillColor: Colors.white.withValues(alpha: 0.03), contentPadding: EdgeInsets.all(14.w),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r), borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.5))));
+  Widget _label(String text) => Text(text, style: GoogleFonts.outfit(fontSize: 9.sp, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: 1.5));
 
-  Widget _backBtn(BuildContext c) => GestureDetector(onTap: () => Navigator.pop(c), child: Container(padding: EdgeInsets.all(8.w),
-    decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(12.r), border: Border.all(color: AppTheme.surfaceBorder)),
-    child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18.sp)));
+  Widget _toggleBtn(String text, bool isActive, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 12.h),
+        decoration: BoxDecoration(
+          color: isActive ? AppTheme.primary.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.02),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: isActive ? AppTheme.primary : Colors.white.withValues(alpha: 0.05)),
+        ),
+        alignment: Alignment.center,
+        child: Text(text, style: GoogleFonts.outfit(fontSize: 10.sp, fontWeight: FontWeight.w800, color: isActive ? Colors.white : Colors.white38)),
+      ),
+    );
+  }
 
-  Widget _addBtn(VoidCallback onTap) => GestureDetector(onTap: onTap, child: Container(padding: EdgeInsets.all(10.w),
-    decoration: BoxDecoration(gradient: LinearGradient(colors: [AppTheme.primary, const Color(0xFFE85D04)]), borderRadius: BorderRadius.circular(12.r)),
-    child: Icon(Icons.add_rounded, color: Colors.white, size: 22.sp)));
+  InputDecoration _dec(String h) => InputDecoration(
+    hintText: h, 
+    hintStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 14.sp),
+    filled: true, 
+    fillColor: Colors.white.withValues(alpha: 0.02), 
+    contentPadding: EdgeInsets.all(16.w),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.3))),
+  );
 }

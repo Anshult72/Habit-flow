@@ -16,10 +16,8 @@ class AppConstants {
   // ─── NestJS Backend API ──────────────────────────────────────────────
   // We use a getter to dynamically detect the environment:
   // - Android Emulator: 10.0.2.2
-  // - iOS Simulator: localhost (127.0.0.1)
-  // - Web/Desktop: localhost
   static String get apiBaseUrl {
-    // Production Railway Backend
+    // Production Railway Backend:
     return 'https://stunning-encouragement-production-68e8.up.railway.app/api';
   }
 

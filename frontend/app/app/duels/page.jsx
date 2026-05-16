@@ -243,7 +243,7 @@ export default function Duels() {
 
                 <div className="p-6 rounded-2xl bg-[#FF6B2C]/5 border border-[#FF6B2C]/20 mt-4">
                   <div className="flex justify-between items-center">
-                    <p className="text-sm text-text-muted font-medium">Winner's Bounty</p>
+                    <p className="text-sm text-text-muted font-medium">Winner&apos;s Bounty</p>
                     <p className="text-xl font-bold text-[#FF6B2C]">{formData.entryXP * 2} XP</p>
                   </div>
                 </div>

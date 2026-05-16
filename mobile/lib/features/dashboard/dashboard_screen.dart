@@ -1,15 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/hf_premium_widgets.dart';
 import '../../services/user_service.dart';
-import '../../services/habit_service.dart';
+// Removed unused import
+import '../../core/state/habits_provider.dart';
 import '../../models/user_model.dart';
 import '../../models/habit_model.dart';
 import '../../services/analytics_service.dart';
 import '../notifications/notifications_modal.dart';
+import '../main_layout.dart'; // To access bottomNavIndexProvider
+import '../../services/missions_service.dart';
+import '../../services/learning_service.dart';
+import '../../models/mission_model.dart';
+import '../../models/learning_model.dart';
+import '../../services/matrix_service.dart';
+import '../matrix/matrix_screen.dart';
+import '../memo/memo_screen.dart';
+import '../missions/missions_screen.dart';
+import '../learning/learning_screen.dart';
 
 /// Dashboard — "Control Center" matching the web's app/app/page.jsx
 ///
@@ -26,6 +39,9 @@ class DashboardScreen extends ConsumerWidget {
     final userAsync = ref.watch(userProfileProvider);
     final habitsAsync = ref.watch(habitsProvider);
     final productivityAsync = ref.watch(productivityScoreProvider);
+    final missionsAsync = ref.watch(missionsProvider);
+    final subjectsAsync = ref.watch(subjectsProvider);
+    final matrixAsync = ref.watch(matrixProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -37,6 +53,9 @@ class DashboardScreen extends ConsumerWidget {
             ref.invalidate(userProfileProvider);
             ref.invalidate(habitsProvider);
             ref.invalidate(productivityScoreProvider);
+            ref.invalidate(missionsProvider);
+            ref.invalidate(subjectsProvider);
+            ref.invalidate(focusStatsProvider);
           },
           child: ListView(
             padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 120.h), // bottom padding for floating dock
@@ -57,7 +76,11 @@ class DashboardScreen extends ConsumerWidget {
               // ─── Stat Grid (web: grid grid-cols-1 md:grid-cols-3) ───
               userAsync.when(
                 data: (user) => _buildStatGrid(user, productivityAsync),
-                loading: () => const SizedBox.shrink(),
+                loading: () => Container(
+                  height: 100.h,
+                  width: double.infinity,
+                  decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(AppTheme.radiusMd)),
+                ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 1500.ms, color: Colors.white.withValues(alpha: 0.02)),
                 error: (_, __) => const SizedBox.shrink(),
               ),
 
@@ -75,12 +98,392 @@ class DashboardScreen extends ConsumerWidget {
               // ─── XP Progress Card (web: right sidebar) ──────────────
               userAsync.when(
                 data: (user) => _buildXpProgressCard(user),
-                loading: () => const SizedBox.shrink(),
+                loading: () => _buildLoadingCard(height: 150),
                 error: (_, __) => const SizedBox.shrink(),
               ),
+
+              SizedBox(height: 24.h),
+
+              // ─── Quick Actions Grid ──────────────────────────
+              _buildQuickActions(context, ref),
+
+              SizedBox(height: 24.h),
+
+              // ─── Matrix Strategy ─────────────────────────────
+              matrixAsync.when(
+                data: (tasks) => _buildMatrixCard(context, tasks),
+                loading: () => _buildLoadingCard(height: 160),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+
+              SizedBox(height: 24.h),
+
+              // ─── Cognitive Sync ──────────────────────────────
+              _buildModuleCard(
+                title: 'COGNITIVE SYNC',
+                icon: Icons.description_outlined,
+                actionText: 'LAUNCH BRAIN',
+                onAction: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoScreen()));
+                },
+                content: _buildModuleEmptyState('Tap LAUNCH BRAIN to view your cognitive cache.'),
+              ),
+
+              SizedBox(height: 24.h),
+
+              // ─── Active Missions ─────────────────────────────
+              missionsAsync.when(
+                data: (missions) => _buildModuleCard(
+                  title: 'ACTIVE MISSIONS',
+                  icon: Icons.rocket_launch_outlined,
+                  actionText: 'ALL MISSIONS',
+                  onAction: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const MissionsScreen()));
+                  },
+                  content: missions.isEmpty 
+                    ? _buildModuleEmptyState('No active missions initialized.', isSmall: true)
+                    : _buildDashboardMissionItem(missions.first),
+                ),
+                loading: () => _buildLoadingCard(height: 140),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+
+              SizedBox(height: 24.h),
+
+              // ─── Learning Hub ────────────────────────────────
+              subjectsAsync.when(
+                data: (subjects) => _buildModuleCard(
+                  title: 'LEARNING HUB',
+                  icon: Icons.menu_book_outlined,
+                  actionText: 'MODULES',
+                  onAction: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LearningScreen()));
+                  },
+                  content: subjects.isEmpty
+                    ? _buildModuleEmptyState('NO ACTIVE MODULES')
+                    : _buildDashboardSubjectItem(subjects.first),
+                ),
+                loading: () => _buildLoadingCard(height: 140),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+              
+              SizedBox(height: 40.h),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ─── New Section Builders ──────────────────────────────────────────
+
+  Widget _buildQuickActions(BuildContext context, WidgetRef ref) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 16.h,
+      crossAxisSpacing: 16.w,
+      childAspectRatio: 1.6,
+      children: [
+        _buildQuickActionItem(
+          label: 'Deep Focus',
+          icon: Icons.play_arrow_outlined,
+          color: const Color(0xFF3B82F6),
+          onTap: () => ref.read(bottomNavIndexProvider.notifier).state = 2, // Focus
+        ),
+        _buildQuickActionItem(
+          label: 'New Memo',
+          icon: Icons.add,
+          color: const Color(0xFFF97316),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoScreen()));
+          },
+        ),
+        _buildQuickActionItem(
+          label: 'Study Session',
+          icon: Icons.menu_book_outlined,
+          color: const Color(0xFFA855F7),
+          onTap: () => ref.read(bottomNavIndexProvider.notifier).state = 4, // More
+        ),
+        _buildQuickActionItem(
+          label: 'Matrix View',
+          icon: Icons.track_changes_outlined,
+          color: const Color(0xFF22C55E),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const MatrixScreen()));
+          },
+        ),
+      ],
+    ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.1);
+  }
+
+  Widget _buildQuickActionItem({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return HFScalableButton(
+      onTap: onTap,
+      child: HFGlassCard(
+        borderRadius: AppTheme.radiusMd,
+        padding: EdgeInsets.zero,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 28.sp),
+            SizedBox(height: 8.h),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                color: color,
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMatrixCard(BuildContext context, List<dynamic> tasks) {
+    int q1 = tasks.where((t) => t.quadrant == 1 && !t.completed).length;
+    int q2 = tasks.where((t) => t.quadrant == 2 && !t.completed).length;
+    int q3 = tasks.where((t) => t.quadrant == 3 && !t.completed).length;
+    int q4 = tasks.where((t) => t.quadrant == 4 && !t.completed).length;
+
+    return HFGlassCard(
+      borderRadius: AppTheme.radiusXxl,
+      padding: EdgeInsets.all(24.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.track_changes_outlined, color: AppTheme.primary, size: 20.sp),
+                  SizedBox(width: 12.w),
+                  Text(
+                    'MATRIX STRATEGY',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textMain,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const MatrixScreen()));
+                },
+                child: Text(
+                  'FULL VIEW',
+                  style: GoogleFonts.outfit(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 24.h),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 12.h,
+            crossAxisSpacing: 12.w,
+            childAspectRatio: 1.4,
+            children: [
+              _buildMatrixQuadrant('Q1: DO', '$q1', Colors.redAccent),
+              _buildMatrixQuadrant('Q2: PLAN', '$q2', Colors.yellowAccent),
+              _buildMatrixQuadrant('Q3: DELEGATE', '$q3', Colors.blueAccent),
+              _buildMatrixQuadrant('Q4: REMOVE', '$q4', Colors.greenAccent),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.1);
+  }
+
+  Widget _buildMatrixQuadrant(String label, String count, Color dotColor) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 6.w,
+                height: 6.w,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor),
+              ),
+              SizedBox(width: 8.w),
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            count,
+            style: GoogleFonts.outfit(
+              fontSize: 24.sp,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textMain,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModuleCard({
+    required String title,
+    required IconData icon,
+    required String actionText,
+    required VoidCallback onAction,
+    required Widget content,
+  }) {
+    return HFGlassCard(
+      borderRadius: AppTheme.radiusXxl,
+      padding: EdgeInsets.all(24.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: AppTheme.primary, size: 20.sp),
+                  SizedBox(width: 12.w),
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textMain,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: onAction,
+                child: Text(
+                  actionText,
+                  style: GoogleFonts.outfit(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 24.h),
+          content,
+        ],
+      ),
+    ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.1);
+  }
+
+  Widget _buildModuleEmptyState(String text, {bool isSmall = false}) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: 32.h, horizontal: 20.w),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1), style: BorderStyle.solid),
+      ),
+      child: Center(
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: isSmall 
+            ? GoogleFonts.inter(fontSize: 13.sp, color: Colors.white24, fontStyle: FontStyle.italic)
+            : GoogleFonts.outfit(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textMuted,
+                letterSpacing: 1.5,
+              ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardMissionItem(MissionModel mission) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(mission.title, style: GoogleFonts.outfit(fontSize: 14.sp, fontWeight: FontWeight.w700, color: Colors.white)),
+          SizedBox(height: 4.h),
+          Text(mission.category ?? 'General', style: GoogleFonts.inter(fontSize: 10.sp, color: AppTheme.primary, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardSubjectItem(SubjectModel subject) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(subject.title, style: GoogleFonts.outfit(fontSize: 14.sp, fontWeight: FontWeight.w700, color: Colors.white)),
+              Text('${subject.progress}%', style: GoogleFonts.outfit(fontSize: 12.sp, fontWeight: FontWeight.w800, color: AppTheme.primary)),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4.r),
+            child: LinearProgressIndicator(
+              value: subject.progress / 100,
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              valueColor: const AlwaysStoppedAnimation(AppTheme.primary),
+              minHeight: 4.h,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -92,17 +495,12 @@ class DashboardScreen extends ConsumerWidget {
       children: [
         Row(
           children: [
-            // Eagle logo placeholder — matches web's eagle-logo-transparent.png
+            // Eagle logo asset — matches web's eagle-logo-transparent.png
             Container(
               width: 32.w,
               height: 32.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppTheme.primary, AppTheme.accent],
-                ),
                 boxShadow: [
                   BoxShadow(
                     color: AppTheme.primaryGlow.withValues(alpha: 0.3),
@@ -110,16 +508,9 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              child: Center(
-                child: Text(
-                  'HF',
-                  style: GoogleFonts.outfit(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
-                ),
+              child: Image.asset(
+                'assets/images/eagle-logo-transparent.png',
+                fit: BoxFit.contain,
               ),
             ),
             SizedBox(width: 10.w),
@@ -272,14 +663,18 @@ class DashboardScreen extends ConsumerWidget {
         final i = entry.key;
         final stat = entry.value;
         return Expanded(
-          child: Container(
-            margin: EdgeInsets.only(right: i < 2 ? 8.w : 0, left: i > 0 ? 4.w : 0),
-            padding: EdgeInsets.all(16.w),
-            decoration: AppTheme.glowCard(
-              glowColor: stat.color,
-              glowIntensity: 0.15,
-              borderRadius: AppTheme.radiusMd,
-            ),
+          child: HFGlowContainer(
+            glowColor: stat.color,
+            glowIntensity: 0.15,
+            borderRadius: AppTheme.radiusMd,
+            child: Container(
+              margin: EdgeInsets.only(right: i < 2 ? 8.w : 0, left: i > 0 ? 4.w : 0),
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                border: Border.all(color: AppTheme.surfaceBorder),
+              ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -318,10 +713,8 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
-          )
-              .animate()
-              .fadeIn(delay: Duration(milliseconds: 100 * i), duration: 500.ms)
-              .slideY(begin: 0.1),
+          ),
+          ).animate().fadeIn(delay: Duration(milliseconds: 100 * i), duration: 500.ms).slideY(begin: 0.1),
         );
       }).toList(),
     );
@@ -332,9 +725,9 @@ class DashboardScreen extends ConsumerWidget {
     final today = DateTime.now().toIso8601String().split('T')[0];
     final completedToday = habits.where((h) => h.completions.any((c) => c.date == today && c.completed)).length;
 
-    return Container(
+    return HFGlassCard(
+      borderRadius: AppTheme.radiusXxl,
       padding: EdgeInsets.all(24.w),
-      decoration: AppTheme.glassCard(borderRadius: AppTheme.radiusXxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -430,10 +823,10 @@ class DashboardScreen extends ConsumerWidget {
     final isCompleted = habit.completions.any((c) => c.date == today && c.completed);
     final categoryColor = AppTheme.categoryColors[habit.difficulty] ?? AppTheme.primary;
 
-    return GestureDetector(
+    return HFScalableButton(
       onTap: () async {
-        await ref.read(habitServiceProvider).toggleHabit(habit.id, today);
-        ref.invalidate(habitsProvider);
+        HapticFeedback.mediumImpact();
+        await ref.read(habitsProvider.notifier).toggleHabit(habit.id, today);
         ref.invalidate(userProfileProvider);
       },
       child: Container(
@@ -550,19 +943,21 @@ class DashboardScreen extends ConsumerWidget {
 
   /// XP Progress card matching web's right-sidebar XP widget
   Widget _buildXpProgressCard(UserModel user) {
-    return Container(
+    return HFGlassCard(
+      borderRadius: AppTheme.radiusXxl,
       padding: EdgeInsets.all(24.w),
-      decoration: AppTheme.glassCard(borderRadius: AppTheme.radiusXxl).copyWith(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primary.withValues(alpha: 0.08),
-            Colors.transparent,
-            AppTheme.secondary.withValues(alpha: 0.06),
-          ],
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppTheme.primary.withValues(alpha: 0.08),
+              Colors.transparent,
+              AppTheme.secondary.withValues(alpha: 0.06),
+            ],
+          ),
         ),
-      ),
       child: Column(
         children: [
           Row(
@@ -650,10 +1045,8 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-    )
-        .animate()
-        .fadeIn(delay: 500.ms, duration: 600.ms)
-        .slideX(begin: 0.05);
+      ),
+    ).animate().fadeIn(delay: 500.ms, duration: 600.ms).slideX(begin: 0.05);
   }
 
   Widget _buildEmptyProtocols() {
@@ -665,6 +1058,8 @@ class DashboardScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
+          Icon(Icons.checklist_rtl_rounded, size: 32.sp, color: Colors.white12),
+          SizedBox(height: 16.h),
           Text(
             'NO HABITS FOUND',
             style: GoogleFonts.outfit(
@@ -676,8 +1071,9 @@ class DashboardScreen extends ConsumerWidget {
           ),
           SizedBox(height: 8.h),
           Text(
-            'Create your first habit',
+            'Create your first habit to begin tracking.',
             style: GoogleFonts.inter(fontSize: 13.sp, color: AppTheme.primary, fontWeight: FontWeight.w700),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -697,12 +1093,31 @@ class DashboardScreen extends ConsumerWidget {
     ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 1500.ms, color: Colors.white.withValues(alpha: 0.03));
   }
 
-  Widget _buildLoadingCard() {
+  Widget _buildLoadingCard({double height = 200}) {
     return Container(
-      height: 200.h,
+      height: height.h,
       decoration: AppTheme.glassCard(borderRadius: AppTheme.radiusXxl),
-      child: const Center(child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2)),
-    );
+      padding: EdgeInsets.all(24.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(width: 150.w, height: 24.h, decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(8.r))),
+              Container(width: 40.w, height: 40.w, decoration: const BoxDecoration(color: AppTheme.surface, shape: BoxShape.circle)),
+            ],
+          ),
+          SizedBox(height: 20.h),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(12.r)),
+            ),
+          ),
+        ],
+      ),
+    ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 1500.ms, color: Colors.white.withValues(alpha: 0.02));
   }
 
   Widget _buildErrorCard(String message, WidgetRef ref) {
@@ -717,6 +1132,7 @@ class DashboardScreen extends ConsumerWidget {
           IconButton(
             icon: Icon(Icons.refresh, color: AppTheme.danger, size: 18.sp),
             onPressed: () {
+              HapticFeedback.lightImpact();
               ref.invalidate(userProfileProvider);
               ref.invalidate(habitsProvider);
             },

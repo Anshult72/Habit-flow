@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, Clock, Play, Pause, RotateCcw, 
@@ -314,21 +314,7 @@ function PomodoroTimer({ onSessionComplete }) {
   const [isActive, setIsActive] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   
-  useEffect(() => {
-    let interval = null;
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
-      clearInterval(interval);
-      setIsActive(false);
-      handleComplete();
-    }
-    return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
-
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     if (!isBreak) {
       if (onSessionComplete) {
         onSessionComplete({
@@ -344,7 +330,23 @@ function PomodoroTimer({ onSessionComplete }) {
       setIsBreak(false);
       setTimeLeft(25 * 60);
     }
-  };
+  }, [isBreak, onSessionComplete]);
+
+  useEffect(() => {
+    let interval = null;
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (isActive && timeLeft === 0) {
+      clearInterval(interval);
+      setTimeout(() => {
+        setIsActive(false);
+        handleComplete();
+      }, 0);
+    }
+    return () => clearInterval(interval);
+  }, [isActive, timeLeft, handleComplete]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -485,7 +487,15 @@ function Timer({ onSessionComplete }) {
   const [isRinging, setIsRinging] = useState(false);
   const audioIntervalRef = useRef(null);
 
-  const startAlarm = () => {
+  const stopAlarm = useCallback(() => {
+    setIsRinging(false);
+    if (audioIntervalRef.current) {
+      clearInterval(audioIntervalRef.current);
+      audioIntervalRef.current = null;
+    }
+  }, []);
+
+  const startAlarm = useCallback(() => {
     setIsRinging(true);
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -508,15 +518,7 @@ function Timer({ onSessionComplete }) {
     } catch (e) {
       console.log('Audio error:', e);
     }
-  };
-
-  const stopAlarm = () => {
-    setIsRinging(false);
-    if (audioIntervalRef.current) {
-      clearInterval(audioIntervalRef.current);
-      audioIntervalRef.current = null;
-    }
-  };
+  }, [stopAlarm]);
 
   useEffect(() => {
     let interval = null;
@@ -525,19 +527,21 @@ function Timer({ onSessionComplete }) {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
     } else if (isActive && timeLeft === 0) {
-      setIsActive(false);
-      startAlarm();
-      if (onSessionComplete) {
-        onSessionComplete({
-          type: 'timer',
-          duration: inputMin + Math.round(inputSec / 60),
-          xpEarned: 10,
-          rating: 5
-        });
-      }
+      setTimeout(() => {
+        setIsActive(false);
+        startAlarm();
+        if (onSessionComplete) {
+          onSessionComplete({
+            type: 'timer',
+            duration: inputMin + Math.round(inputSec / 60),
+            xpEarned: 10,
+            rating: 5
+          });
+        }
+      }, 0);
     }
     return () => clearInterval(interval);
-  }, [isActive, timeLeft, inputMin, inputSec, onSessionComplete]);
+  }, [isActive, timeLeft, inputMin, inputSec, onSessionComplete, startAlarm]);
 
   useEffect(() => {
     return () => stopAlarm();

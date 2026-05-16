@@ -33,6 +33,9 @@ dependencies:
   lottie: ^3.0.0
   cupertino_icons: ^1.0.6
   timeago: ^3.7.1
+  confetti: ^0.8.0
+  fl_chart: ^1.2.0
+  connectivity_plus: ^7.1.1
 
 dev_dependencies:
   flutter_test:

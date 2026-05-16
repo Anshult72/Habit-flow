@@ -24,7 +24,7 @@ export default function NotificationDropdown() {
 
   useEffect(() => {
     if (isOpen) {
-      fetchNotifications();
+      setTimeout(() => fetchNotifications(), 0);
     }
   }, [isOpen]);
 

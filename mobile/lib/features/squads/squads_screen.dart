@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/hf_premium_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
+
 import '../../services/squad_service.dart';
 import '../../services/user_service.dart';
 import '../../models/squad_model.dart';
@@ -61,15 +63,12 @@ class SquadsScreen extends ConsumerWidget {
                     },
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2)),
-                error: (e, _) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Sync failed', style: GoogleFonts.inter(color: AppTheme.textMain)),
-                      TextButton(onPressed: () => ref.invalidate(squadsProvider), child: Text('RETRY', style: GoogleFonts.outfit(color: AppTheme.primary, fontWeight: FontWeight.w700))),
-                    ],
-                  ),
+                loading: () => Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  child: const HFShimmerList(height: 100, count: 4),
+                ),
+                error: (e, _) => HFErrorState(
+                  onRetry: () => ref.invalidate(squadsProvider),
                 ),
                 ),
               ),
@@ -99,10 +98,9 @@ class SquadsScreen extends ConsumerWidget {
     final pendingRequest = requestList?.where((r) => r['status'] == 'pending').firstOrNull;
     final isPendingReceiver = pendingRequest != null;
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
+    return HFGlassCard(
+      borderRadius: AppTheme.radiusXl,
       padding: EdgeInsets.all(20.w),
-      decoration: AppTheme.glassCard(borderRadius: AppTheme.radiusXl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -110,54 +108,96 @@ class SquadsScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(squad.name.toUpperCase(), style: GoogleFonts.outfit(fontSize: 15.sp, fontWeight: FontWeight.w800, color: AppTheme.textMain), overflow: TextOverflow.ellipsis),
+                child: Text(squad.name.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textMain),
+                    overflow: TextOverflow.ellipsis),
               ),
-              Container(
-                width: 36.w,
-                height: 36.w,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+              HFGlowContainer(
+                glowColor: AppTheme.primary,
+                glowIntensity: 0.2,
+                borderRadius: AppTheme.radiusSm,
+                child: Container(
+                  width: 36.w,
+                  height: 36.w,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Icon(Icons.groups_rounded,
+                      color: AppTheme.primary, size: 18.sp),
                 ),
-                child: Icon(Icons.groups_rounded, color: AppTheme.primary, size: 18.sp),
               ),
             ],
           ),
           SizedBox(height: 8.h),
-          Text('${squad.members.length} Members • ${squad.status.toUpperCase()}', style: GoogleFonts.inter(color: AppTheme.textMuted, fontSize: 11.sp)),
+          Text('${squad.members.length} Members • ${squad.status.toUpperCase()}',
+              style:
+                  GoogleFonts.inter(color: AppTheme.textMuted, fontSize: 11.sp)),
           SizedBox(height: 14.h),
           if (isPendingReceiver) ...[
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _respondToSquad(ref, context, pendingRequest['id'], false),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger.withValues(alpha: 0.2), foregroundColor: AppTheme.danger),
-                    child: Text('DECLINE', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                  child: HFScalableButton(
+                    onTap: () => _respondToSquad(
+                        ref, context, pendingRequest['id'], false),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      decoration: BoxDecoration(
+                          color: AppTheme.danger.withValues(alpha: 0.2),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radiusMd)),
+                      child: Center(
+                          child: Text('DECLINE',
+                              style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.danger))),
+                    ),
                   ),
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _respondToSquad(ref, context, pendingRequest['id'], true),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success.withValues(alpha: 0.2), foregroundColor: AppTheme.success),
-                    child: Text('JOIN SQUAD', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                  child: HFScalableButton(
+                    onTap: () => _respondToSquad(
+                        ref, context, pendingRequest['id'], true),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      decoration: BoxDecoration(
+                          color: AppTheme.success.withValues(alpha: 0.2),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radiusMd)),
+                      child: Center(
+                          child: Text('JOIN SQUAD',
+                              style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.success))),
+                    ),
                   ),
                 ),
               ],
             ),
           ] else
             Row(
-            children: [
-              ...squad.members.take(4).map((_) => Padding(
-                padding: EdgeInsets.only(right: 4.w),
-                child: CircleAvatar(radius: 12.r, backgroundColor: Colors.white.withValues(alpha: 0.05), child: Icon(Icons.person, size: 12.sp, color: Colors.white24)),
-              )),
-              if (squad.members.length > 4)
-                Text('+${squad.members.length - 4}', style: GoogleFonts.inter(color: Colors.white24, fontSize: 11.sp)),
-            ],
-          ),
+              children: [
+                ...squad.members.take(4).map((_) => Padding(
+                      padding: EdgeInsets.only(right: 4.w),
+                      child: CircleAvatar(
+                          radius: 12.r,
+                          backgroundColor: Colors.white.withValues(alpha: 0.05),
+                          child: Icon(Icons.person,
+                              size: 12.sp, color: Colors.white24)),
+                    )),
+                if (squad.members.length > 4)
+                  Text('+${squad.members.length - 4}',
+                      style: GoogleFonts.inter(
+                          color: Colors.white24, fontSize: 11.sp)),
+              ],
+            ),
         ],
       ),
     ).animate().fadeIn(delay: Duration(milliseconds: 80 * index), duration: 400.ms).slideY(begin: 0.05);
@@ -169,6 +209,7 @@ class SquadsScreen extends ConsumerWidget {
       ref.invalidate(squadsProvider);
       ref.invalidate(userProfileProvider);
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e', style: const TextStyle(color: Colors.white)), backgroundColor: AppTheme.danger));
     }
   }

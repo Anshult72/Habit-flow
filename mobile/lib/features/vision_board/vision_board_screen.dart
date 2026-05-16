@@ -42,7 +42,7 @@ class _VisionBoardScreenState extends State<VisionBoardScreen> {
           Text('Vision Board', style: GoogleFonts.outfit(fontSize: 22.sp, fontWeight: FontWeight.w800, color: Colors.white)),
         ])),
         GestureDetector(onTap: _addItem, child: Container(padding: EdgeInsets.all(10.w),
-          decoration: BoxDecoration(gradient: LinearGradient(colors: [AppTheme.primary, const Color(0xFFE85D04)]), borderRadius: BorderRadius.circular(12.r)),
+          decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFFE85D04)]), borderRadius: BorderRadius.circular(12.r)),
           child: Icon(Icons.add_rounded, color: Colors.white, size: 22.sp))),
       ])).animate().fadeIn(duration: 400.ms),
 
@@ -54,7 +54,7 @@ class _VisionBoardScreenState extends State<VisionBoardScreen> {
           SizedBox(width: 12.w),
           Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(4.r), child: LinearProgressIndicator(
             value: _items.isEmpty ? 0 : _items.where((i) => i.completed).length / _items.length,
-            minHeight: 6.h, backgroundColor: Colors.white.withValues(alpha: 0.05), valueColor: AlwaysStoppedAnimation(AppTheme.primary)))),
+            minHeight: 6.h, backgroundColor: Colors.white.withValues(alpha: 0.05), valueColor: const AlwaysStoppedAnimation(AppTheme.primary)))),
         ]))),
       SizedBox(height: 12.h),
 
@@ -131,7 +131,7 @@ class _VisionBoardScreenState extends State<VisionBoardScreen> {
             setState(() => _items.add(VisionItem(id: DateTime.now().millisecondsSinceEpoch.toString(), title: tc.text.trim(), category: cat)));
             _save(); Navigator.pop(ctx); },
             child: Container(width: double.infinity, padding: EdgeInsets.symmetric(vertical: 16.h),
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [AppTheme.primary, const Color(0xFFE85D04)]), borderRadius: BorderRadius.circular(16.r)),
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFFE85D04)]), borderRadius: BorderRadius.circular(16.r)),
               alignment: Alignment.center, child: Text('Manifest', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp)))),
         ]))));
   }

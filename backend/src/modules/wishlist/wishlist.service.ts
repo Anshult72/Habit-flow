@@ -94,6 +94,7 @@ export class WishlistService {
         sourceUrl: url
       };
       
+      
     } catch (error) {
       this.logger.error(`Auto-sync failed for URL: ${url} - ${error.message}`);
       
@@ -109,5 +110,55 @@ export class WishlistService {
         error: true
       };
     }
+  }
+
+  async findAll(supabaseId: string) {
+    return this.prisma.wishlistItem.findMany({
+      where: { user: { supabaseId } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async create(supabaseId: string, data: any) {
+    const user = await this.prisma.user.findUnique({ where: { supabaseId } });
+    if (!user) throw new Error('User not found');
+
+    return this.prisma.wishlistItem.create({
+      data: {
+        title: data.title,
+        price: parseFloat(data.price?.toString() || '0'),
+        targetPrice: parseFloat(data.targetPrice?.toString() || '0'),
+        currentSavings: parseFloat(data.currentSavings?.toString() || '0'),
+        category: data.category,
+        link: data.link,
+        image: data.image,
+        status: data.status || 'Active',
+        userId: user.id,
+      },
+    });
+  }
+
+  async update(supabaseId: string, id: string, data: any) {
+    const user = await this.prisma.user.findUnique({ where: { supabaseId } });
+    if (!user) throw new Error('User not found');
+
+    return this.prisma.wishlistItem.update({
+      where: { id, userId: user.id },
+      data: {
+        ...data,
+        price: data.price != null ? parseFloat(data.price.toString()) : undefined,
+        targetPrice: data.targetPrice != null ? parseFloat(data.targetPrice.toString()) : undefined,
+        currentSavings: data.currentSavings != null ? parseFloat(data.currentSavings.toString()) : undefined,
+      },
+    });
+  }
+
+  async delete(supabaseId: string, id: string) {
+    const user = await this.prisma.user.findUnique({ where: { supabaseId } });
+    if (!user) throw new Error('User not found');
+
+    return this.prisma.wishlistItem.delete({
+      where: { id, userId: user.id },
+    });
   }
 }

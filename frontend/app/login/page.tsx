@@ -27,7 +27,7 @@ export default function LoginPage() {
     try {
       if (resetMode) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/login`, // Redirect back to login after reset
+          redirectTo: `${window.location.origin}/auth/reset-password`,
         });
         if (error) throw error;
         
@@ -273,7 +273,7 @@ export default function LoginPage() {
 
         {/* Footer Link */}
         <p className="mt-8 text-center text-sm text-white/50">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <button
             onClick={() => router.push('/signup')}
             className="text-white hover:underline transition-all"

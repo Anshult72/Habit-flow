@@ -10,7 +10,7 @@ export function Providers({ children }) {
   const autoTheme = useStore((state) => state.autoTheme);
 
   useEffect(() => {
-    setMounted(true);
+    setTimeout(() => setMounted(true), 0);
 
     // ── Supabase Auth Listener ──────────────────────────────────────────────
     const unsubscribeAuth = subscribeToAuthChanges((user) => {

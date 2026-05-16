@@ -39,19 +39,21 @@ export default function Onboarding() {
   const [activeListPreview, setActiveListPreview] = useState('work');
 
   useEffect(() => {
-    const stepSaved = localStorage.getItem('onboardingStep');
-    if (stepSaved) setStep(parseInt(stepSaved));
+    setTimeout(() => {
+      const stepSaved = localStorage.getItem('onboardingStep');
+      if (stepSaved) setStep(parseInt(stepSaved));
 
-    const featuresSaved = localStorage.getItem('userFeatures');
-    if (featuresSaved) setSelectedFeatures(JSON.parse(featuresSaved));
+      const featuresSaved = localStorage.getItem('userFeatures');
+      if (featuresSaved) setSelectedFeatures(JSON.parse(featuresSaved));
 
-    const listsSaved = localStorage.getItem('userLists');
-    if (listsSaved) setSelectedLists(JSON.parse(listsSaved));
+      const listsSaved = localStorage.getItem('userLists');
+      if (listsSaved) setSelectedLists(JSON.parse(listsSaved));
 
-    const hasCompleted = localStorage.getItem('hasCompletedOnboarding') === 'true';
-    if (hasCompleted) {
-      router.replace('/app');
-    }
+      const hasCompleted = localStorage.getItem('hasCompletedOnboarding') === 'true';
+      if (hasCompleted) {
+        router.replace('/app');
+      }
+    }, 0);
   }, [router]);
 
   useEffect(() => {

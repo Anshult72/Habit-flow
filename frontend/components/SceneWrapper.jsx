@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, useSpring, useMotionValue } from 'framer-motion';
 
 export default function SceneWrapper({ children }) {
@@ -12,14 +12,14 @@ export default function SceneWrapper({ children }) {
   const smoothY = useSpring(mouseY, springConfig);
 
   const [isIdle, setIsIdle] = useState(false);
-  let idleTimer;
+  const idleTimerRef = useRef(null);
 
   const handleMouseMove = useCallback((e) => {
     mouseX.set(e.clientX);
     mouseY.set(e.clientY);
     setIsIdle(false);
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => setIsIdle(true), 2000);
+    clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => setIsIdle(true), 2000);
   }, [mouseX, mouseY]);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function SceneWrapper({ children }) {
     window.addEventListener('mousemove', handleMouseMove);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(idleTimer);
+      clearTimeout(idleTimerRef.current);
     };
   }, [handleMouseMove]);
 
@@ -93,14 +93,21 @@ export default function SceneWrapper({ children }) {
 
 function Particle() {
   const [mounted, setMounted] = useState(false);
-  const [initialPos, setInitialPos] = useState({ x: 0, y: 0 });
+  const [props, setProps] = useState({ x: 0, y: 0, left: '0%', top: '0%', yAnim: 0, duration: 10 });
 
   useEffect(() => {
-    setMounted(true);
-    setInitialPos({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight
-    });
+    const t = setTimeout(() => {
+      setProps({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        yAnim: Math.random() * -100 - 50,
+        duration: Math.random() * 10 + 10
+      });
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
 
   if (!mounted) return null;
@@ -108,22 +115,22 @@ function Particle() {
   return (
     <motion.div
       initial={{ 
-        x: initialPos.x, 
-        y: initialPos.y 
+        x: props.x, 
+        y: props.y 
       }}
       animate={{
-        y: [null, Math.random() * -100 - 50],
+        y: [null, props.yAnim],
         opacity: [0, 0.3, 0],
       }}
       transition={{
-        duration: Math.random() * 10 + 10,
+        duration: props.duration,
         repeat: Infinity,
         ease: "linear",
       }}
       className="absolute w-1 h-1 bg-white rounded-full"
       style={{
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`,
+        left: props.left,
+        top: props.top,
       }}
     />
   );

@@ -59,7 +59,7 @@ class AchievementsScreen extends StatelessWidget {
             SizedBox(height: 4.h),
             ClipRRect(borderRadius: BorderRadius.circular(4.r), child: LinearProgressIndicator(
               value: unlocked / _badges.length, minHeight: 6.h,
-              backgroundColor: Colors.white.withValues(alpha: 0.05), valueColor: AlwaysStoppedAnimation(AppTheme.primary))),
+              backgroundColor: Colors.white.withValues(alpha: 0.05), valueColor: const AlwaysStoppedAnimation(AppTheme.primary))),
           ])),
         ]))),
       SizedBox(height: 16.h),

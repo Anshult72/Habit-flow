@@ -16,7 +16,7 @@ export default function Achievements() {
   // Compute current streak
   const currentStreak = useMemo(() => {
     let streak = 0;
-    let d = today;
+    let d = new Date();
     while (true) {
       const dStr = format(d, 'yyyy-MM-dd');
       const completedOnDay = habits.some(h => completions[`${h.id}-${dStr}`]);
@@ -28,7 +28,7 @@ export default function Achievements() {
       }
     }
     return streak;
-  }, [completions, habits, today, todayStr]);
+  }, [completions, habits, todayStr]);
 
   const allAchievements = [
     {

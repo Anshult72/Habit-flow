@@ -36,6 +36,18 @@ class SquadModel {
       requests: json['requests'] as List?,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'inviteCode': inviteCode,
+        'entryXP': entryXP,
+        'durationDays': durationDays,
+        'status': status,
+        'creator': creator,
+        'members': members.map((e) => e.toJson()).toList(),
+        'requests': requests,
+      };
 }
 
 class SquadMemberModel {
@@ -59,4 +71,11 @@ class SquadMemberModel {
       user: json['user'],
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'role': role,
+        'userId': userId,
+        'user': user,
+      };
 }

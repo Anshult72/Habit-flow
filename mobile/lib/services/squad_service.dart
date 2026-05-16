@@ -1,19 +1,37 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/api_client.dart';
+import '../core/storage/local_storage_service.dart';
 import '../models/squad_model.dart';
 
-/// Service that talks to the NestJS backend's /api/squads endpoints.
 class SquadService {
   final Dio _dio;
+  final LocalStorageService _localStorage;
 
-  SquadService(this._dio);
+  static const String _cacheKey = 'squads_cache';
+
+  SquadService(this._dio, this._localStorage);
 
   Future<List<SquadModel>> getSquads() async {
-    final response = await _dio.get('/squads');
-    return (response.data as List).map((e) => SquadModel.fromJson(e)).toList();
+    final cachedData = _localStorage.readData(_cacheKey);
+    List<SquadModel> squads = [];
+
+    if (cachedData != null) {
+      squads = (cachedData as List).map((e) => SquadModel.fromJson(e)).toList();
+    }
+
+    try {
+      final response = await _dio.get('/squads');
+      squads = (response.data as List).map((e) => SquadModel.fromJson(e)).toList();
+      await _localStorage.saveData(_cacheKey, response.data);
+    } catch (e) {
+      if (squads.isEmpty) rethrow;
+    }
+
+    return squads;
   }
 
+  // Mutations strictly require internet to prevent multiplayer desyncs
   Future<SquadModel> createSquad(String name, int entryXP, int durationDays) async {
     final response = await _dio.post('/squads', data: {
       'name': name,
@@ -42,7 +60,10 @@ class SquadService {
 }
 
 final squadServiceProvider = Provider<SquadService>((ref) {
-  return SquadService(ref.watch(dioProvider));
+  return SquadService(
+    ref.watch(dioProvider),
+    ref.watch(localStorageProvider),
+  );
 });
 
 final squadsProvider = FutureProvider<List<SquadModel>>((ref) async {

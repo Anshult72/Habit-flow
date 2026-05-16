@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/hf_premium_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -128,15 +129,12 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ],
           ),
-          loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2)),
-          error: (e, _) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Profile sync failed', style: GoogleFonts.inter(color: AppTheme.textMain)),
-                TextButton(onPressed: () => ref.invalidate(userProfileProvider), child: Text('RETRY', style: GoogleFonts.outfit(color: AppTheme.primary, fontWeight: FontWeight.w700))),
-              ],
-            ),
+          loading: () => Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: const HFShimmerList(height: 150, count: 1),
+          ),
+          error: (e, _) => HFErrorState(
+            onRetry: () => ref.invalidate(userProfileProvider),
           ),
         ),
       ),
@@ -152,7 +150,7 @@ class ProfileScreen extends ConsumerWidget {
         title: Text('Sign Out?', style: GoogleFonts.outfit(color: AppTheme.textMain, fontWeight: FontWeight.w700)),
         content: Text('You will need to log in again.', style: GoogleFonts.inter(color: AppTheme.textMuted)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: AppTheme.textMuted))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted))),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);

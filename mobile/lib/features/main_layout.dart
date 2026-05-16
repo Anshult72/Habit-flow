@@ -1,9 +1,15 @@
 import 'dart:ui';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../services/realtime_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:confetti/confetti.dart';
 import '../core/theme/app_theme.dart';
+import '../core/widgets/hf_premium_widgets.dart';
+import '../core/widgets/confetti_provider.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'habits/habits_screen.dart';
 import 'focus/focus_screen.dart';
@@ -19,12 +25,43 @@ final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 ///
 /// Web dock items: Home, Habits, Focus, Analytics + More
 /// Flutter dock: Dashboard, Habits, Focus, Analytics, More
-class MainLayout extends ConsumerWidget {
+class MainLayout extends ConsumerStatefulWidget {
   const MainLayout({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainLayout> createState() => _MainLayoutState();
+}
+
+class _MainLayoutState extends ConsumerState<MainLayout> {
+  late ConfettiController _confettiController;
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+    
+    // Initialize real-time listeners
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(realtimeServiceProvider).init();
+    });
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedIndex = ref.watch(bottomNavIndexProvider);
+
+    // Listen for global events (confetti, etc.)
+    ref.listen(globalEventProvider, (previous, next) {
+      if (next == GlobalEvent.confetti) {
+        _confettiController.play();
+      }
+    });
 
     final List<Widget> screens = [
       const DashboardScreen(),
@@ -36,6 +73,7 @@ class MainLayout extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.background,
+      extendBody: true,
       body: Stack(
         children: [
           // ─── Ambient Glow Background (from web layout.jsx) ─────────
@@ -76,9 +114,45 @@ class MainLayout extends ConsumerWidget {
           ),
 
           // ─── Content ───────────────────────────────────────────────
-          IndexedStack(
-            index: selectedIndex,
-            children: screens,
+          HFScaffoldWrapper(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.02, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: SizedBox(
+                key: ValueKey<int>(selectedIndex),
+                child: screens[selectedIndex],
+              ),
+            ),
+          ),
+
+          // ─── Confetti Overlay ─────────────────────────────────────
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              colors: const [
+                AppTheme.primary,
+                AppTheme.accent,
+                Colors.orange,
+                Colors.yellow,
+              ],
+              createParticlePath: _drawStar,
+            ),
           ),
 
           // ─── Floating Dock (mirrors MobileDock.jsx) ────────────────
@@ -131,16 +205,14 @@ class MainLayout extends ConsumerWidget {
     );
   }
 
-  /// Dock item matching web's MobileDock button:
-  /// - Active: orange glow pill background + primary color icon
-  /// - Inactive: muted icon
-  /// - Label: text-[9px] uppercase tracking-widest
   Widget _buildDockItem(WidgetRef ref, int index, IconData icon, String label, int currentIndex) {
     final isActive = currentIndex == index;
 
-    return GestureDetector(
-      onTap: () => ref.read(bottomNavIndexProvider.notifier).state = index,
-      behavior: HitTestBehavior.opaque,
+    return HFScalableButton(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        ref.read(bottomNavIndexProvider.notifier).state = index;
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
@@ -180,5 +252,28 @@ class MainLayout extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Path for star shape confetti
+  Path _drawStar(Size size) {
+    double degToRad(double deg) => deg * (pi / 180.0);
+    const numberOfPoints = 5;
+    final halfWidth = size.width / 2;
+    final externalRadius = halfWidth;
+    final internalRadius = halfWidth / 2.5;
+    final degreesPerStep = degToRad(360 / numberOfPoints);
+    final halfDegreesPerStep = degreesPerStep / 2;
+    final path = Path();
+    final fullAngle = degToRad(360);
+    path.moveTo(size.width, halfWidth);
+
+    for (double step = 0; step < fullAngle; step += degreesPerStep) {
+      path.lineTo(halfWidth + externalRadius * cos(step),
+          halfWidth + externalRadius * sin(step));
+      path.lineTo(halfWidth + internalRadius * cos(step + halfDegreesPerStep),
+          halfWidth + internalRadius * sin(step + halfDegreesPerStep));
+    }
+    path.close();
+    return path;
   }
 }

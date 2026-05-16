@@ -3,7 +3,22 @@ import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 
 // ─── Sign Up ─────────────────────────────────────────────────────────────────
 export const signUp = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({ 
+    email, 
+    password,
+    options: {
+      emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/confirm-email`
+    }
+  });
+  if (error) throw error;
+  return data;
+};
+
+// ─── Reset Password ──────────────────────────────────────────────────────────
+export const resetPasswordForEmail = async (email: string) => {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/reset-password`,
+  });
   if (error) throw error;
   return data;
 };

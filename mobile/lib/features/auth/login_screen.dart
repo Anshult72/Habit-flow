@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../core/network/api_client.dart';
@@ -275,7 +276,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 width: double.infinity,
                                 height: 54.h,
                                 child: OutlinedButton(
-                                  onPressed: () {},
+                                  onPressed: () async {
+                                    try {
+                                      await ref.read(authServiceProvider).signInWithGoogle();
+                                    } catch (e) {
+                                      setState(() => _errorMessage = 'Google sign in failed');
+                                    }
+                                  },
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.white,
                                     side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
@@ -306,7 +313,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     style: GoogleFonts.inter(color: const Color(0xFF9CA3AF), fontSize: 14.sp),
                                   ),
                                   GestureDetector(
-                                    onTap: () {},
+                                    onTap: () => context.push('/signup'),
                                     child: Text(
                                       'Sign up',
                                       style: GoogleFonts.inter(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w600),

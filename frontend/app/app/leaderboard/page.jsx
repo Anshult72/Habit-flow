@@ -376,7 +376,7 @@ export default function LeaderboardPage() {
               <Swords size={32} className="text-[#FF6B2C] relative z-10" />
             </div>
             <p className="text-white font-display font-bold text-xl">Ready to claim your spot?</p>
-            <p className="text-text-muted text-sm max-w-xs leading-relaxed">Start tracking your habits today and compete with the world's most productive individuals.</p>
+            <p className="text-text-muted text-sm max-w-xs leading-relaxed">Start tracking your habits today and compete with the world&apos;s most productive individuals.</p>
             <button className="mt-4 px-10 py-4 rounded-xl bg-gradient-to-r from-[#FF6B2C] to-[#E85D04] text-white font-bold text-lg shadow-[0_0_20px_rgba(255,107,44,0.3)] hover:shadow-[0_0_40px_rgba(255,107,44,0.6)] hover:-translate-y-1 transition-all duration-300 active:scale-95">
               Start Competing
             </button>

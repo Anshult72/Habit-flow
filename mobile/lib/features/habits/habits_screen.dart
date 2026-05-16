@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/hf_premium_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
-import '../../services/habit_service.dart';
+
+// Removed unused import
 import '../../models/habit_model.dart';
+import '../../core/state/habits_provider.dart';
+// Removed unused import
 import 'add_habit_dialog.dart';
 
 /// Habits management screen using web's glass-card design language.
@@ -21,67 +25,227 @@ class HabitsScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // ─── Header ──────────────────────────────────────
+            // ─── Header: Protocol Config ─────────────────────
             Padding(
               padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Text('PROTOCOLS', style: GoogleFonts.outfit(fontSize: 11.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 2)),
-                      SizedBox(height: 4.h),
-                      Text('Habit Management', style: GoogleFonts.outfit(fontSize: 24.sp, fontWeight: FontWeight.w800, color: AppTheme.textMain, letterSpacing: -0.5)),
+                      Text(
+                        'Protocol Config',
+                        style: GoogleFonts.outfit(
+                          fontSize: 28.sp,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textMain,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Icon(Icons.auto_awesome, color: AppTheme.primary, size: 24.sp),
                     ],
                   ),
-                  GestureDetector(
-                    onTap: () => _showAddHabit(context),
-                    child: Container(
-                      padding: EdgeInsets.all(10.w),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
-                      ),
-                      child: Icon(Icons.add, color: AppTheme.primary, size: 22.sp),
+                  SizedBox(height: 8.h),
+                  Text(
+                    'Define and calibrate your daily\noperational habits.',
+                    style: GoogleFonts.inter(
+                      fontSize: 14.sp,
+                      color: AppTheme.textMuted,
+                      height: 1.4,
                     ),
                   ),
                 ],
               ),
             ),
 
-            SizedBox(height: 20.h),
+            SizedBox(height: 24.h),
 
-            // ─── Habits List ─────────────────────────────────
-            Expanded(
-              child: habitsAsync.when(
-                data: (habits) {
-                  if (habits.isEmpty) return _buildEmptyState(context);
-                  return ListView.builder(
-                    padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 120.h),
-                    itemCount: habits.length,
-                    itemBuilder: (context, index) => _buildHabitItem(context, habits[index], ref, index),
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2)),
-                error: (e, _) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Sync failed', style: GoogleFonts.inter(color: AppTheme.textMain, fontSize: 16.sp)),
-                      SizedBox(height: 8.h),
-                      TextButton(
-                        onPressed: () => ref.invalidate(habitsProvider),
-                        child: Text('RETRY', style: GoogleFonts.outfit(color: AppTheme.primary, fontWeight: FontWeight.w700, letterSpacing: 1)),
-                      ),
-                    ],
+            // ─── Action Buttons: Templates & New Protocol ────
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildActionButton(
+                      label: 'Templates',
+                      icon: Icons.layers_outlined,
+                      color: AppTheme.primary,
+                      onTap: () {},
+                    ),
                   ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: _buildActionButton(
+                      label: 'New\nProtocol',
+                      icon: Icons.add,
+                      color: Colors.white,
+                      isPill: true,
+                      onTap: () => _showAddHabit(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 24.h),
+
+            // ─── Habits Scrollable Content ───────────────────
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => ref.invalidate(habitsProvider),
+                color: AppTheme.primary,
+                backgroundColor: AppTheme.background,
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 120.h),
+                  children: [
+                    // ─── Bundles Section ───────────────────────
+                    _buildBundleCard('Morning Routine', 'ACTIVATE BUNDLE', const Color(0xFFF97316)),
+                    SizedBox(height: 12.h),
+                    _buildBundleCard('Deep Work', 'ACTIVATE BUNDLE', const Color(0xFFF97316)),
+                    
+                    SizedBox(height: 24.h),
+
+                    // ─── Filters Section ───────────────────────
+                    _buildSearchBar(),
+                    SizedBox(height: 12.h),
+                    _buildFilterBar(),
+
+                    SizedBox(height: 24.h),
+
+                    // ─── Habits List ──────────────────────────
+                    habitsAsync.when(
+                      data: (habits) {
+                        if (habits.isEmpty) return _buildEmptyState(context);
+                        return Column(
+                          children: habits.asMap().entries.map((entry) {
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: 12.h),
+                              child: _buildHabitItem(context, entry.value, ref, entry.key),
+                            );
+                          }).toList(),
+                        );
+                      },
+                      loading: () => Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16.w),
+                        child: const HFShimmerList(height: 80, count: 5),
+                      ),
+                      error: (e, _) => _buildErrorState(ref),
+                    ),
+                  ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    bool isPill = false,
+  }) {
+    return HFScalableButton(
+      onTap: onTap,
+      child: Container(
+        height: 72.h,
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
+        decoration: BoxDecoration(
+          color: isPill ? Colors.white : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(isPill ? 36.r : 20.r),
+          border: isPill ? null : Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: isPill ? Colors.black : color, size: 20.sp),
+            SizedBox(width: 10.w),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+                color: isPill ? Colors.black : Colors.white,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBundleCard(String title, String action, Color iconColor) {
+    return Container(
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(10.w),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Icon(Icons.bolt_rounded, color: iconColor, size: 20.sp),
+          ),
+          SizedBox(width: 16.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.w700, color: AppTheme.textMain)),
+                Text(action, style: GoogleFonts.outfit(fontSize: 11.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      height: 48.h,
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: Colors.white38, size: 20.sp),
+          SizedBox(width: 12.w),
+          Text('Search protocols...', style: GoogleFonts.inter(color: Colors.white24, fontSize: 14.sp)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    return Container(
+      height: 48.h,
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.filter_list, color: Colors.white38, size: 20.sp),
+          SizedBox(width: 12.w),
+          Text('All Classifications', style: GoogleFonts.inter(color: Colors.white24, fontSize: 14.sp)),
+        ],
       ),
     );
   }
@@ -95,10 +259,19 @@ class HabitsScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildErrorState(WidgetRef ref) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: HFErrorState(
+        onRetry: () => ref.invalidate(habitsProvider),
+      ),
+    );
+  }
+
   Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 24.w),
+        margin: EdgeInsets.only(top: 40.h),
         padding: EdgeInsets.all(32.w),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -107,7 +280,7 @@ class HabitsScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.bolt_rounded, size: 48.sp, color: AppTheme.primary.withValues(alpha: 0.5)),
+            Icon(Icons.bolt_rounded, size: 48.sp, color: AppTheme.primary.withValues(alpha: 0.4)),
             SizedBox(height: 16.h),
             Text('NO PROTOCOLS DEPLOYED', style: GoogleFonts.outfit(fontSize: 12.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1.5)),
             SizedBox(height: 12.h),
@@ -122,76 +295,137 @@ class HabitsScreen extends ConsumerWidget {
   }
 
   Widget _buildHabitItem(BuildContext context, HabitModel habit, WidgetRef ref, int index) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8.h),
-      padding: EdgeInsets.all(16.w),
-      decoration: AppTheme.glassCard(borderRadius: AppTheme.radiusMd),
-      child: Row(
+    final categoryColor = AppTheme.categoryColors[habit.category] ?? AppTheme.primary;
+
+    return HFGlassCard(
+      borderRadius: AppTheme.radiusXl,
+      padding: EdgeInsets.all(24.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40.w,
-            height: 40.w,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-            child: Icon(_getIcon(habit.icon), color: AppTheme.primary, size: 20.sp),
-          ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(habit.title, style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.w700, color: AppTheme.textMain)),
-                SizedBox(height: 2.h),
-                Text('${habit.frequency} • ${habit.difficulty}', style: GoogleFonts.inter(fontSize: 11.sp, color: AppTheme.textMuted)),
-              ],
-            ),
-          ),
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: Colors.white24, size: 18.sp),
-            color: const Color(0xFF0A0A0A),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm)),
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.redAccent))),
+          Row(
+            children: [
+              // Category Dot
+              Container(
+                width: 12.w,
+                height: 12.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: categoryColor,
+                  boxShadow: [
+                    BoxShadow(color: categoryColor.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 1),
+                  ],
+                ),
+              ),
+              SizedBox(width: 16.w),
+              Expanded(
+                child: Text(
+                  habit.title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textMain,
+                  ),
+                ),
+              ),
+              _buildItemMenu(context, habit, ref),
             ],
-            onSelected: (val) async {
-              if (val == 'delete') {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: const Color(0xFF0A0A0A),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusLg)),
-                    title: Text('Delete Protocol?', style: GoogleFonts.outfit(color: AppTheme.textMain, fontWeight: FontWeight.w700)),
-                    content: Text('This will permanently remove "${habit.title}".', style: TextStyle(color: AppTheme.textMuted)),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: TextStyle(color: AppTheme.textMuted))),
-                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.redAccent))),
+          ),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              if (habit.category != null && habit.category!.isNotEmpty) ...[
+                _buildBadge(habit.category!.toUpperCase(), categoryColor),
+                SizedBox(width: 8.w),
+              ],
+              _buildBadge(habit.difficulty.toUpperCase(), Colors.white10, textColor: Colors.white70),
+            ],
+          ),
+          SizedBox(height: 20.h),
+          const Divider(color: Colors.white10),
+          SizedBox(height: 16.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('TARGET', style: GoogleFonts.outfit(fontSize: 10.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1)),
+                  SizedBox(height: 4.h),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text('30', style: GoogleFonts.outfit(fontSize: 22.sp, fontWeight: FontWeight.w800, color: AppTheme.textMain)),
+                      SizedBox(width: 4.w),
+                      Text('Days/Mo', style: GoogleFonts.inter(fontSize: 12.sp, color: AppTheme.textMuted)),
                     ],
                   ),
-                );
-                if (confirm == true) {
-                  await ref.read(habitServiceProvider).deleteHabit(habit.id);
-                  ref.invalidate(habitsProvider);
-                }
-              }
-            },
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('XP VALUE', style: GoogleFonts.outfit(fontSize: 10.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1)),
+                  SizedBox(height: 4.h),
+                  Text('25 XP', style: GoogleFonts.outfit(fontSize: 18.sp, fontWeight: FontWeight.w800, color: const Color(0xFFF97316))),
+                ],
+              ),
+            ],
           ),
         ],
       ),
-    ).animate().fadeIn(delay: Duration(milliseconds: 50 * index), duration: 400.ms).slideX(begin: 0.03);
+    ).animate().fadeIn(delay: Duration(milliseconds: 50 * index), duration: 400.ms).slideY(begin: 0.05);
   }
 
-  IconData _getIcon(String name) {
-    switch (name.toLowerCase()) {
-      case 'zap': return Icons.bolt_rounded;
-      case 'book': return Icons.menu_book_rounded;
-      case 'gym': return Icons.fitness_center_rounded;
-      case 'water': return Icons.water_drop_rounded;
-      case 'code': return Icons.code_rounded;
-      case 'run': return Icons.directions_run_rounded;
-      default: return Icons.star_rounded;
-    }
+  Widget _buildBadge(String text, Color color, {Color? textColor}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6.r),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.outfit(
+          fontSize: 9.sp,
+          fontWeight: FontWeight.w800,
+          color: textColor ?? color,
+          letterSpacing: 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemMenu(BuildContext context, HabitModel habit, WidgetRef ref) {
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.more_horiz, color: Colors.white24, size: 20.sp),
+      color: const Color(0xFF111111),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMd)),
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: 'delete', child: Text('Delete Protocol', style: TextStyle(color: Colors.redAccent))),
+      ],
+      onSelected: (val) async {
+        if (val == 'delete') {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF0A0A0A),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusLg)),
+              title: Text('Delete Protocol?', style: GoogleFonts.outfit(color: AppTheme.textMain, fontWeight: FontWeight.w700)),
+              content: Text('This will permanently remove "${habit.title}".', style: const TextStyle(color: AppTheme.textMuted)),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted))),
+                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.redAccent))),
+              ],
+            ),
+          );
+          if (confirm == true) {
+            await ref.read(habitsProvider.notifier).deleteHabit(habit.id);
+          }
+        }
+      },
+    );
   }
 }

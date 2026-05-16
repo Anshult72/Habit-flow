@@ -38,9 +38,15 @@ class ErrorBoundary extends React.Component {
             </div>
             
             <h2 className="text-2xl font-display font-bold text-white mb-3">Module Offline</h2>
-            <p className="text-text-muted mb-8 text-sm">
+            <p className="text-text-muted mb-4 text-sm">
               The operational module encountered an unexpected anomaly. Our systems have logged the incident.
             </p>
+            {this.state.error && (
+              <div className="bg-red-500/10 p-4 rounded-xl text-left overflow-auto mb-6 max-h-48">
+                <p className="text-red-400 font-mono text-xs font-bold mb-2">{this.state.error.toString()}</p>
+                <p className="text-red-400/70 font-mono text-xs whitespace-pre-wrap">{this.state.error.stack}</p>
+              </div>
+            )}
             
             <div className="flex gap-4 justify-center">
               <button 

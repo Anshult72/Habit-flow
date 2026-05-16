@@ -41,7 +41,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setDailyFocus(localStorage.getItem('dailyFocus') || '');
+      setTimeout(() => setDailyFocus(localStorage.getItem('dailyFocus') || ''), 0);
     }
   }, []);
 
@@ -59,7 +59,7 @@ export default function Dashboard() {
       const difficultyXp = { Easy: 10, Medium: 25, Hard: 50, Elite: 100 };
       const amount = difficultyXp[habit.difficulty || 'Medium'];
       
-      const id = Date.now();
+      const id = new Date().getTime();
       setXpPopups(prev => [...prev, { id, amount }]);
       setTimeout(() => {
         setXpPopups(prev => prev.filter(p => p.id !== id));
@@ -179,7 +179,7 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass-card p-8 md:p-10 rounded-[2.5rem] border-white/5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-6">
               <div>
-                <h2 className="text-3xl font-display font-bold text-white tracking-tight">Today's Protocol</h2>
+                <h2 className="text-3xl font-display font-bold text-white tracking-tight">Today&apos;s Protocol</h2>
                 <p className="text-textMuted text-sm mt-1">Daily directives for current operation</p>
               </div>
               <div className="flex items-center gap-6 bg-white/5 px-6 py-4 rounded-3xl border border-white/10 backdrop-blur-md">

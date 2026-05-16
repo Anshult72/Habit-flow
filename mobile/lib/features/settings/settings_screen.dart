@@ -14,7 +14,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notifications = true;
-  bool _darkMode = true;
+  final bool _darkMode = true;
   bool _haptics = true;
   bool _autoSync = true;
 
@@ -128,7 +128,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Text(title, style: GoogleFonts.outfit(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white)),
           Text(desc, style: GoogleFonts.inter(fontSize: 11.sp, color: AppTheme.textMuted)),
         ])),
-        Switch.adaptive(value: value, onChanged: onChanged, activeColor: AppTheme.primary,
+        Switch.adaptive(value: value, onChanged: onChanged, activeThumbColor: AppTheme.primary,
           activeTrackColor: AppTheme.primary.withValues(alpha: 0.3)),
       ]));
   }

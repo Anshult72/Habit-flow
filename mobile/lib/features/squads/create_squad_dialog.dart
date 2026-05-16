@@ -64,10 +64,10 @@ class _CreateSquadDialogState extends ConsumerState<CreateSquadDialog> {
         right: 24.w,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24.h,
       ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0A0A),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A0A0A),
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
-        border: const Border(top: BorderSide(color: AppTheme.surfaceBorder)),
+        border: Border(top: BorderSide(color: AppTheme.surfaceBorder)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

@@ -152,7 +152,7 @@ export default function AuthPage() {
                 {/* Hint for signup */}
                 {mode === 'signup' && (
                   <p className="text-[10px] text-textMuted pl-1">
-                    Use at least 6 characters. You'll receive a confirmation email.
+                    Use at least 6 characters. You&apos;ll receive a confirmation email.
                   </p>
                 )}
 

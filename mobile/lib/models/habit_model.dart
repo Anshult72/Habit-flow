@@ -23,6 +23,58 @@ class HabitModel {
     required this.completions,
   });
 
+  bool get isCompleted {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    return completions.any((c) => c.date == today && c.completed);
+  }
+
+  HabitModel copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? category,
+    String? color,
+    String? icon,
+    String? frequency,
+    String? difficulty,
+    int? goal,
+    List<HabitCompletionModel>? completions,
+    bool? isCompleted, // Added to support manual toggle if needed in notifier
+  }) {
+    // If isCompleted is passed, we update today's completion
+    List<HabitCompletionModel> updatedCompletions = completions ?? this.completions;
+    if (isCompleted != null) {
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final index = updatedCompletions.indexWhere((c) => c.date == today);
+      if (index != -1) {
+        updatedCompletions = List.from(updatedCompletions);
+        updatedCompletions[index] = HabitCompletionModel(
+          id: updatedCompletions[index].id,
+          date: today,
+          completed: isCompleted,
+        );
+      } else {
+        updatedCompletions = [
+          ...updatedCompletions,
+          HabitCompletionModel(id: 'temp_${DateTime.now().millisecondsSinceEpoch}', date: today, completed: isCompleted),
+        ];
+      }
+    }
+
+    return HabitModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      color: color ?? this.color,
+      icon: icon ?? this.icon,
+      frequency: frequency ?? this.frequency,
+      difficulty: difficulty ?? this.difficulty,
+      goal: goal ?? this.goal,
+      completions: updatedCompletions,
+    );
+  }
+
   factory HabitModel.fromJson(Map<String, dynamic> json) {
     return HabitModel(
       id: json['id'],
@@ -38,6 +90,21 @@ class HabitModel {
           .map((e) => HabitCompletionModel.fromJson(e))
           .toList(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'category': category,
+      'color': color,
+      'icon': icon,
+      'frequency': frequency,
+      'difficulty': difficulty,
+      'goal': goal,
+      'completions': completions.map((e) => e.toJson()).toList(),
+    };
   }
 }
 
@@ -58,5 +125,13 @@ class HabitCompletionModel {
       date: json['date'],
       completed: json['completed'] ?? true,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'date': date,
+      'completed': completed,
+    };
   }
 }

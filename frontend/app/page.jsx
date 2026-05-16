@@ -74,7 +74,7 @@ function HeroTypingAnimation() {
         setText2(line2.slice(0, text2.length + 1));
       }, 100);
     } else {
-      setIsLine2Done(true);
+      timeout = setTimeout(() => setIsLine2Done(true), 0);
     }
     return () => clearTimeout(timeout);
   }, [text2, isLine1Done]);

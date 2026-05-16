@@ -19,6 +19,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { DuelsModule } from './modules/duels/duels.module';
 import { SquadsModule } from './modules/squads/squads.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { MatrixModule } from './modules/matrix/matrix.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     DuelsModule,
     SquadsModule,
     NotificationsModule,
+    MatrixModule,
   ],
   controllers: [AppController],
   providers: [AppService],
