@@ -54,6 +54,8 @@ export class AnalyticsService {
       ...user,
       rank: index + 1,
     }));
+  }
+
   async logFocusSession(supabaseId: string, data: { type: string; duration: number; xpEarned: number; rating?: number }) {
     const user = await this.prisma.user.findUnique({ where: { supabaseId } });
     if (!user) throw new NotFoundException('User not found');
