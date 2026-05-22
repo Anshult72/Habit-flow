@@ -37,9 +37,9 @@ class AnalyticsScreen extends ConsumerWidget {
               // Top Stats Grid
               Row(
                 children: [
-                  _buildStatCard('2,450', 'TOTAL XP', Icons.star_rounded, AppTheme.primary),
+                  _buildStatCard('0', 'TOTAL XP', Icons.star_rounded, AppTheme.primary),
                   SizedBox(width: 12.w),
-                  _buildStatCard('Level 8', 'CURRENT', Icons.bolt_rounded, const Color(0xFF3B82F6)),
+                  _buildStatCard('Level 1', 'CURRENT', Icons.bolt_rounded, const Color(0xFF3B82F6)),
                 ],
               ).animate().fadeIn(duration: 400.ms),
               SizedBox(height: 12.h),
@@ -333,9 +333,9 @@ class _CatData {
 }
 
 const _categoryData = [
-  _CatData('Fitness', 35, Color(0xFF10B981)),
-  _CatData('Work', 25, Color(0xFF3B82F6)),
-  _CatData('Learn', 20, Color(0xFFA855F7)),
-  _CatData('Mind', 15, Color(0xFFFFD700)),
-  _CatData('Social', 5, Color(0xFFEC4899)),
+  _CatData('Health', 35, Color(0xFF10B981)),
+  _CatData('Productivity', 25, Color(0xFFEAB308)),
+  _CatData('Learning', 20, Color(0xFF3B82F6)),
+  _CatData('Mindfulness', 15, Color(0xFFA855F7)),
+  _CatData('Finance', 5, Color(0xFF14B8A6)),
 ];

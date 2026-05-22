@@ -71,6 +71,26 @@ class UserService {
       rethrow;
     }
   }
+
+  /// Optimistic updates to cached XP for instant UI feedback.
+  Future<void> addLocalXp(int amount) async {
+    final cached = _getCachedProfile();
+    if (cached != null) {
+      final updated = UserModel(
+        id: cached.id,
+        userId: cached.userId,
+        email: cached.email,
+        name: cached.name,
+        avatarUrl: cached.avatarUrl,
+        city: cached.city,
+        state: cached.state,
+        xp: (cached.xp + amount).clamp(0, 999999999).toInt(),
+        level: cached.level,
+        streakShields: cached.streakShields,
+      );
+      await _localStorage.saveData(_cacheKey, updated.toJson());
+    }
+  }
 }
 
 final userServiceProvider = Provider<UserService>((ref) {
@@ -81,6 +101,32 @@ final userServiceProvider = Provider<UserService>((ref) {
   );
 });
 
-final userProfileProvider = FutureProvider<UserModel>((ref) async {
-  return ref.watch(userServiceProvider).getProfile();
+class UserProfileNotifier extends AsyncNotifier<UserModel> {
+  @override
+  Future<UserModel> build() async {
+    return ref.watch(userServiceProvider).getProfile();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => ref.read(userServiceProvider).getProfile());
+  }
+
+  Future<void> addOptimisticXp(int amount) async {
+    if (state.hasValue) {
+      final user = state.value!;
+      final newXp = (user.xp + amount).clamp(0, 999999999).toInt();
+      
+      // Let backend calculate real level, but we can optimistically guess if we want
+      // For now just update XP so it propagates globally instantly.
+      state = AsyncData(user.copyWith(xp: newXp));
+      
+      // Also write to local cache instantly
+      await ref.read(userServiceProvider).addLocalXp(amount);
+    }
+  }
+}
+
+final userProfileProvider = AsyncNotifierProvider<UserProfileNotifier, UserModel>(() {
+  return UserProfileNotifier();
 });

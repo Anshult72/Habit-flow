@@ -342,3 +342,87 @@ class HFErrorState extends StatelessWidget {
     );
   }
 }
+
+/// A premium primary button used throughout the application.
+class HFPrimaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final bool isLoading;
+  final bool isOutlined;
+  final EdgeInsetsGeometry? padding;
+  final Color? color;
+  final double? borderRadius;
+  final double? width;
+
+  const HFPrimaryButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.icon,
+    this.isLoading = false,
+    this.isOutlined = false,
+    this.padding,
+    this.color,
+    this.borderRadius,
+    this.width,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = color ?? AppTheme.primary;
+
+    return HFScalableButton(
+      onTap: isLoading ? () {} : onTap,
+      child: Container(
+        width: width ?? double.infinity,
+        padding: padding ?? EdgeInsets.symmetric(vertical: 16.h),
+        decoration: BoxDecoration(
+          color: isOutlined ? Colors.transparent : effectiveColor,
+          borderRadius: BorderRadius.circular(borderRadius ?? AppTheme.radiusMd),
+          border: isOutlined
+              ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+              : null,
+          boxShadow: !isOutlined
+              ? [
+                  BoxShadow(
+                    color: effectiveColor.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: isLoading
+              ? SizedBox(
+                  width: 20.w,
+                  height: 20.h,
+                  child: const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, color: Colors.white, size: 18.sp),
+                      SizedBox(width: 12.w),
+                    ],
+                    Text(
+                      label.toUpperCase(),
+                      style: GoogleFonts.outfit(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                        color: isOutlined ? AppTheme.textMuted : Colors.white,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}

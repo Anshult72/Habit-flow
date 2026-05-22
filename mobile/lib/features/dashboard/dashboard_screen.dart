@@ -23,6 +23,7 @@ import '../matrix/matrix_screen.dart';
 import '../memo/memo_screen.dart';
 import '../missions/missions_screen.dart';
 import '../learning/learning_screen.dart';
+import '../../core/utils/xp_level_engine.dart';
 
 /// Dashboard — "Control Center" matching the web's app/app/page.jsx
 ///
@@ -821,13 +822,12 @@ class DashboardScreen extends ConsumerWidget {
   /// Single habit row matching web's habit item design
   Widget _buildHabitRow(HabitModel habit, String today, WidgetRef ref, int index) {
     final isCompleted = habit.completions.any((c) => c.date == today && c.completed);
-    final categoryColor = AppTheme.categoryColors[habit.difficulty] ?? AppTheme.primary;
+    final categoryColor = AppTheme.categoryColors[habit.category] ?? AppTheme.primary;
 
     return HFScalableButton(
       onTap: () async {
         HapticFeedback.mediumImpact();
         await ref.read(habitsProvider.notifier).toggleHabit(habit.id, today);
-        ref.invalidate(userProfileProvider);
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 10.h),
@@ -912,10 +912,17 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
                   SizedBox(height: 3.h),
-                  Text(
-                    '${habit.difficulty} • ${_getDifficultyXp(habit.difficulty)} XP',
-                    style: GoogleFonts.inter(fontSize: 10.sp, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
-                  ),
+                  // XP display: respect isXpEligible from backend
+                  if (habit.isXpEligible == false)
+                    Text(
+                      '${XpLevelEngine.normalizeDifficulty(habit.difficulty)} • TRACKING ONLY',
+                      style: GoogleFonts.inter(fontSize: 10.sp, color: AppTheme.textMuted.withValues(alpha: 0.5), fontWeight: FontWeight.w500),
+                    )
+                  else
+                    Text(
+                      '${XpLevelEngine.normalizeDifficulty(habit.difficulty)} • ${_getDifficultyXp(habit.difficulty)} XP',
+                      style: GoogleFonts.inter(fontSize: 10.sp, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
+                    ),
                 ],
               ),
             ),
@@ -999,50 +1006,60 @@ class DashboardScreen extends ConsumerWidget {
 
           SizedBox(height: 20.h),
 
-          // Level progress
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Level ${user.level}',
-                style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w700, color: AppTheme.textMain),
-              ),
-              Text(
-                '${500 - (user.xp % 500)} XP to Rank Up',
-                style: GoogleFonts.inter(fontSize: 12.sp, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
-          SizedBox(height: 10.h),
-
-          // Progress bar — web: h-4 bg-black/50 rounded-full p-1
-          Container(
-            height: 14.h,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10.r),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-            ),
-            padding: EdgeInsets.all(3.w),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Align(
-                  alignment: Alignment.centerLeft,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 800),
-                    curve: Curves.easeOutCubic,
-                    width: constraints.maxWidth * ((user.xp % 500) / 500),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8.r),
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.primary, Color(0xFFFFB347)],
-                      ),
+          // Level progress — dynamic math via XpLevelEngine (mirrors backend)
+          Builder(builder: (context) {
+            final level = XpLevelEngine.getLevelForXp(user.xp);
+            final xpToNext = XpLevelEngine.getXpToNextLevel(user.xp);
+            final progress = XpLevelEngine.getLevelProgress(user.xp);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Level $level',
+                      style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w700, color: AppTheme.textMain),
                     ),
+                    Text(
+                      '$xpToNext XP to Rank Up',
+                      style: GoogleFonts.inter(fontSize: 12.sp, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10.h),
+
+                // Progress bar — web: h-4 bg-black/50 rounded-full p-1
+                Container(
+                  height: 14.h,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                   ),
-                );
-              },
-            ),
-          ),
+                  padding: EdgeInsets.all(3.w),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Align(
+                        alignment: Alignment.centerLeft,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 800),
+                          curve: Curves.easeOutCubic,
+                          width: constraints.maxWidth * progress,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8.r),
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.primary, Color(0xFFFFB347)],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          }),
         ],
       ),
       ),
@@ -1142,15 +1159,10 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  int _getDifficultyXp(String difficulty) {
-    switch (difficulty) {
-      case 'Easy': return 10;
-      case 'Medium': return 25;
-      case 'Hard': return 50;
-      case 'Elite': return 100;
-      default: return 25;
-    }
-  }
+  /// Returns XP per completion based on complexity tier.
+  /// Delegates to XpLevelEngine — single source of truth, mirrors backend.
+  int _getDifficultyXp(String difficulty) =>
+      XpLevelEngine.getXpForDifficulty(difficulty);
 }
 
 class _StatData {

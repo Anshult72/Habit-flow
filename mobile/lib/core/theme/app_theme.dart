@@ -35,6 +35,7 @@ class AppTheme {
     'Finance': Color(0xFF14B8A6),
     'Deep Work': Color(0xFF6366F1),
     'Detox': Color(0xFFEC4899),
+    'Other': Color(0xFF64748B),
   };
 
   // ─── Gradients (from globals.css) ──────────────────────────────────

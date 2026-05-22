@@ -5,6 +5,7 @@ import { Bell, User, Flame } from 'lucide-react';
 import MobileDock from '@/components/MobileDock';
 import Sidebar from '@/components/Sidebar';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { XpToastProvider } from '@/components/XpToast';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import useStore from '@/store/useStore';
@@ -87,7 +88,9 @@ export default function DashboardLayout({ children }) {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
             <ErrorBoundary>
-              {children}
+              <XpToastProvider>
+                {children}
+              </XpToastProvider>
             </ErrorBoundary>
           </motion.div>
         </div>

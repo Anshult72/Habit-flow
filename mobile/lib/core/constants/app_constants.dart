@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 /// Central configuration for the HabitFlow mobile application.
 ///
@@ -25,6 +24,12 @@ class AppConstants {
   static const String appName = 'HabitFlow';
   static const String appVersion = '1.0.0';
 
-  // ─── XP System Constants (must match backend) ────────────────────────
-  static const int xpPerLevel = 1000;
+  // ─── XP System ───────────────────────────────────────────────────────
+  // The XP leveling system uses a dynamic progression formula, NOT a flat
+  // xpPerLevel constant. Always use XpLevelEngine for all level math.
+  // See: lib/core/utils/xp_level_engine.dart
+  //
+  // XP per complexity tier (matches backend XP_PER_COMPLEXITY):
+  //   Basic = 2 XP | Standard = 4 XP | Advanced = 6 XP | Elite = 8 XP
 }
+

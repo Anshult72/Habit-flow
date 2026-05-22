@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
+import '../../services/user_service.dart';
 import '../profile/profile_screen.dart';
 import '../duels/duels_screen.dart';
 import '../squads/squads_screen.dart';
@@ -26,7 +27,12 @@ class MoreScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const userLevel = 1;
+    final userAsync = ref.watch(userProfileProvider);
+    final userLevel = userAsync.when(
+      data: (u) => u.level,
+      loading: () => 1,
+      error: (_, __) => 1,
+    );
 
     return Scaffold(
       backgroundColor: Colors.transparent,

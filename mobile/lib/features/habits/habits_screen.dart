@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/xp_level_engine.dart';
 
 // Removed unused import
 import '../../models/habit_model.dart';
@@ -23,123 +24,249 @@ class HabitsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: Column(
-          children: [
-            // ─── Header: Protocol Config ─────────────────────
-            Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Protocol Config',
-                        style: GoogleFonts.outfit(
-                          fontSize: 28.sp,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textMain,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Icon(Icons.auto_awesome, color: AppTheme.primary, size: 24.sp),
-                    ],
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    'Define and calibrate your daily\noperational habits.',
-                    style: GoogleFonts.inter(
-                      fontSize: 14.sp,
-                      color: AppTheme.textMuted,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 24.h),
-
-            // ─── Action Buttons: Templates & New Protocol ────
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      label: 'Templates',
-                      icon: Icons.layers_outlined,
-                      color: AppTheme.primary,
-                      onTap: () {},
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: _buildActionButton(
-                      label: 'New\nProtocol',
-                      icon: Icons.add,
-                      color: Colors.white,
-                      isPill: true,
-                      onTap: () => _showAddHabit(context),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 24.h),
-
-            // ─── Habits Scrollable Content ───────────────────
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async => ref.invalidate(habitsProvider),
-                color: AppTheme.primary,
-                backgroundColor: AppTheme.background,
-                child: ListView(
-                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 120.h),
+        child: RefreshIndicator(
+          onRefresh: () async => ref.invalidate(habitsProvider),
+          color: AppTheme.primary,
+          backgroundColor: AppTheme.background,
+          child: ListView(
+            padding: EdgeInsets.only(bottom: 140.h),
+            children: [
+              // ─── Header: Protocol Config ─────────────────────
+              Padding(
+                padding: EdgeInsets.fromLTRB(20.w, 10.h, 20.w, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ─── Bundles Section ───────────────────────
-                    _buildBundleCard('Morning Routine', 'ACTIVATE BUNDLE', const Color(0xFFF97316)),
-                    SizedBox(height: 12.h),
-                    _buildBundleCard('Deep Work', 'ACTIVATE BUNDLE', const Color(0xFFF97316)),
-                    
-                    SizedBox(height: 24.h),
-
-                    // ─── Filters Section ───────────────────────
-                    _buildSearchBar(),
-                    SizedBox(height: 12.h),
-                    _buildFilterBar(),
-
-                    SizedBox(height: 24.h),
-
-                    // ─── Habits List ──────────────────────────
-                    habitsAsync.when(
-                      data: (habits) {
-                        if (habits.isEmpty) return _buildEmptyState(context);
-                        return Column(
-                          children: habits.asMap().entries.map((entry) {
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: 12.h),
-                              child: _buildHabitItem(context, entry.value, ref, entry.key),
-                            );
-                          }).toList(),
-                        );
-                      },
-                      loading: () => Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.w),
-                        child: const HFShimmerList(height: 80, count: 5),
+                    Row(
+                      children: [
+                        Text(
+                          'Protocol Config',
+                          style: GoogleFonts.outfit(
+                            fontSize: 28.sp,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textMain,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        Icon(Icons.auto_awesome, color: AppTheme.primary, size: 24.sp),
+                      ],
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      'Define and calibrate your daily operational habits.',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        color: AppTheme.textMuted,
+                        height: 1.4,
                       ),
-                      error: (e, _) => _buildErrorState(ref),
                     ),
                   ],
                 ),
               ),
+
+              SizedBox(height: 12.h),
+
+              // ─── Action Buttons: Templates & New Protocol ────
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionButton(
+                        label: 'Templates',
+                        icon: Icons.layers_outlined,
+                        color: AppTheme.primary,
+                        onTap: () => _showTemplates(context, ref),
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: _buildActionButton(
+                        label: 'New Protocol',
+                        icon: Icons.add,
+                        color: AppTheme.primary,
+                        isPrimary: true,
+                        onTap: () => _showAddHabit(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 12.h),
+
+              // ─── Filters Section ───────────────────────
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: _buildSearchBar(),
+                    ),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      flex: 5,
+                      child: _buildFilterBar(),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 16.h),
+
+              // ─── Habits List ──────────────────────────
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                child: habitsAsync.when(
+                  data: (habits) {
+                    if (habits.isEmpty) return _buildEmptyState(context);
+                    return Column(
+                      children: habits.asMap().entries.map((entry) {
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 12.h),
+                          child: _buildHabitItem(context, entry.value, ref, entry.key),
+                        );
+                      }).toList(),
+                    );
+                  },
+                  loading: () => const HFShimmerList(height: 80, count: 5),
+                  error: (e, _) => _buildErrorState(ref),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showTemplates(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.all(24.w),
+        decoration: BoxDecoration(
+          color: AppTheme.background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Protocol Templates',
+                      style: GoogleFonts.outfit(
+                        fontSize: 24.sp,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'SELECT A PRE-CONFIGURED STACK',
+                      style: GoogleFonts.outfit(
+                        fontSize: 8.sp,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textMuted,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.close_rounded, color: Colors.white38, size: 24.sp),
+                ),
+              ],
             ),
+            SizedBox(height: 32.h),
+            _buildBundleCard(
+              'Core Life Habit',
+              'INITIALIZE 5 CORE PROTOCOLS',
+              AppTheme.primary,
+              onTap: () {
+                Navigator.pop(context);
+                _initializeCoreHabits(context, ref);
+              },
+            ),
+            SizedBox(height: 12.h),
+            // Future templates can be added here
+            Container(
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.02),
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.03), style: BorderStyle.solid),
+              ),
+              child: Center(
+                child: Text(
+                  'MORE TEMPLATES COMING SOON',
+                  style: GoogleFonts.outfit(
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white12,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 40.h),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _initializeCoreHabits(BuildContext context, WidgetRef ref) async {
+    final habits = [
+      'Drink enough water daily',
+      'Exercise or walk for at least 30 minutes',
+      'Sleep on time and wake up early',
+      'Avoid excessive social media scrolling',
+      'Learn or read something new every day',
+    ];
+
+    try {
+      // Show loading overlay or toast
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Initializing Core Protocols...'), duration: Duration(seconds: 1)),
+      );
+
+      for (final title in habits) {
+        await ref.read(habitServiceProvider).createHabit({
+          'title': title,
+          'frequency': 'Daily',
+          'difficulty': 'Standard',
+          'category': 'Health',
+          'icon': 'Zap',
+          'color': '#FF6B2C',
+          'targetDays': 30, // Initialized for 30 days
+        });
+      }
+
+      ref.invalidate(habitsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Core Life Habits Initialized ⚡'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initialize: $e'), backgroundColor: AppTheme.danger),
+        );
+      }
+    }
   }
 
   Widget _buildActionButton({
@@ -147,30 +274,43 @@ class HabitsScreen extends ConsumerWidget {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
-    bool isPill = false,
+    bool isPrimary = false,
   }) {
     return HFScalableButton(
       onTap: onTap,
       child: Container(
-        height: 72.h,
+        height: 56.h,
         padding: EdgeInsets.symmetric(horizontal: 16.w),
         decoration: BoxDecoration(
-          color: isPill ? Colors.white : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(isPill ? 36.r : 20.r),
-          border: isPill ? null : Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          color: isPrimary ? AppTheme.primary : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(
+            color: isPrimary
+                ? AppTheme.primaryGlow.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.08),
+            width: 1.5,
+          ),
+          boxShadow: isPrimary
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primaryGlow.withValues(alpha: 0.2),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isPill ? Colors.black : color, size: 20.sp),
-            SizedBox(width: 10.w),
+            Icon(icon, color: Colors.white, size: 18.sp),
+            SizedBox(width: 8.w),
             Text(
               label,
               style: GoogleFonts.outfit(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w700,
-                color: isPill ? Colors.black : Colors.white,
-                height: 1.1,
+                color: Colors.white,
               ),
             ),
           ],
@@ -179,43 +319,47 @@ class HabitsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBundleCard(String title, String action, Color iconColor) {
-    return Container(
-      padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(10.w),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12.r),
+  Widget _buildBundleCard(String title, String action, Color iconColor, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(20.w),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Icon(Icons.bolt_rounded, color: iconColor, size: 20.sp),
             ),
-            child: Icon(Icons.bolt_rounded, color: iconColor, size: 20.sp),
-          ),
-          SizedBox(width: 16.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.w700, color: AppTheme.textMain)),
-                Text(action, style: GoogleFonts.outfit(fontSize: 11.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1)),
-              ],
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.w700, color: AppTheme.textMain)),
+                  Text(action, style: GoogleFonts.outfit(fontSize: 11.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1)),
+                ],
+              ),
             ),
-          ),
-        ],
+            Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14.sp),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildSearchBar() {
     return Container(
-      height: 48.h,
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      height: 42.h,
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12.r),
@@ -223,9 +367,15 @@ class HabitsScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.search, color: Colors.white38, size: 20.sp),
-          SizedBox(width: 12.w),
-          Text('Search protocols...', style: GoogleFonts.inter(color: Colors.white24, fontSize: 14.sp)),
+          Icon(Icons.search, color: Colors.white38, size: 18.sp),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              'Search...',
+              style: GoogleFonts.inter(color: Colors.white30, fontSize: 13.sp),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -233,28 +383,38 @@ class HabitsScreen extends ConsumerWidget {
 
   Widget _buildFilterBar() {
     return Container(
-      height: 48.h,
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      height: 42.h,
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
-          Icon(Icons.filter_list, color: Colors.white38, size: 20.sp),
-          SizedBox(width: 12.w),
-          Text('All Classifications', style: GoogleFonts.inter(color: Colors.white24, fontSize: 14.sp)),
+          Icon(Icons.filter_list, color: Colors.white.withValues(alpha: 0.7), size: 18.sp),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              'Classifications',
+              style: GoogleFonts.inter(
+                color: Colors.white.withValues(alpha: 0.75),
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white38, size: 16.sp),
         ],
       ),
     );
   }
 
   void _showAddHabit(BuildContext context) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       builder: (context) => const AddHabitDialog(),
     );
   }
@@ -299,7 +459,7 @@ class HabitsScreen extends ConsumerWidget {
 
     return HFGlassCard(
       borderRadius: AppTheme.radiusXl,
-      padding: EdgeInsets.all(24.w),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -331,34 +491,34 @@ class HabitsScreen extends ConsumerWidget {
               _buildItemMenu(context, habit, ref),
             ],
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               if (habit.category != null && habit.category!.isNotEmpty) ...[
                 _buildBadge(habit.category!.toUpperCase(), categoryColor),
                 SizedBox(width: 8.w),
               ],
-              _buildBadge(habit.difficulty.toUpperCase(), Colors.white10, textColor: Colors.white70),
+              _buildBadge(XpLevelEngine.normalizeDifficulty(habit.difficulty).toUpperCase(), Colors.white10, textColor: Colors.white70),
             ],
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: 12.h),
           const Divider(color: Colors.white10),
-          SizedBox(height: 16.h),
+          SizedBox(height: 12.h),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TARGET', style: GoogleFonts.outfit(fontSize: 10.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1)),
+                  Text('TARGET', style: GoogleFonts.outfit(fontSize: 9.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1)),
                   SizedBox(height: 4.h),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      Text('30', style: GoogleFonts.outfit(fontSize: 22.sp, fontWeight: FontWeight.w800, color: AppTheme.textMain)),
+                      Text('30', style: GoogleFonts.outfit(fontSize: 20.sp, fontWeight: FontWeight.w800, color: AppTheme.textMain)),
                       SizedBox(width: 4.w),
-                      Text('Days/Mo', style: GoogleFonts.inter(fontSize: 12.sp, color: AppTheme.textMuted)),
+                      Text('days/mo', style: GoogleFonts.inter(fontSize: 11.sp, color: AppTheme.textMuted)),
                     ],
                   ),
                 ],
@@ -366,9 +526,40 @@ class HabitsScreen extends ConsumerWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('XP VALUE', style: GoogleFonts.outfit(fontSize: 10.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1)),
+                  Text('XP REWARD', style: GoogleFonts.outfit(fontSize: 9.sp, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 1)),
                   SizedBox(height: 4.h),
-                  Text('25 XP', style: GoogleFonts.outfit(fontSize: 18.sp, fontWeight: FontWeight.w800, color: const Color(0xFFF97316))),
+                  // Show dynamic XP or TRACKING ONLY badge.
+                  // Use == true (not direct bool access) to safely handle any
+                  // runtime null on this field (hot reload, stale cache, etc.)
+                  if (habit.isXpEligible == true)
+                    Text(
+                      '+${(_xpForHabit(habit)) } XP',
+                      style: GoogleFonts.outfit(fontSize: 16.sp, fontWeight: FontWeight.w800, color: const Color(0xFFF97316)),
+                    )
+                  else if (habit.isXpEligible == false)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(6.r),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Text(
+                        'TRACKING ONLY',
+                        style: GoogleFonts.outfit(
+                          fontSize: 8.sp,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white38,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    )
+                  else
+                    // Null fallback (should never show in production) — default to XP display
+                    Text(
+                      '+${_getComplexityXp(habit.difficulty)} XP',
+                      style: GoogleFonts.outfit(fontSize: 16.sp, fontWeight: FontWeight.w800, color: const Color(0xFFF97316)),
+                    ),
                 ],
               ),
             ],
@@ -377,6 +568,20 @@ class HabitsScreen extends ConsumerWidget {
       ),
     ).animate().fadeIn(delay: Duration(milliseconds: 50 * index), duration: 400.ms).slideY(begin: 0.05);
   }
+
+  /// Safely returns XP to display for a habit.
+  /// isXpEligible and xpValue are both nullable (see HabitModel) to handle
+  /// hot-reload stale instances or absent JSON keys gracefully.
+  int _xpForHabit(HabitModel habit) {
+    final stored = habit.xpValue; // int?
+    if (stored != null && stored > 0) return stored;
+    return XpLevelEngine.getXpForDifficulty(habit.difficulty);
+  }
+
+  /// Returns XP per completion based on complexity label.
+  /// Delegates to XpLevelEngine — single source of truth, mirrors backend.
+  int _getComplexityXp(String difficulty) =>
+      XpLevelEngine.getXpForDifficulty(difficulty);
 
   Widget _buildBadge(String text, Color color, {Color? textColor}) {
     return Container(

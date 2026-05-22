@@ -23,6 +23,32 @@ class UserModel {
     required this.streakShields,
   });
 
+  UserModel copyWith({
+    String? id,
+    String? userId,
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? city,
+    String? state,
+    int? xp,
+    int? level,
+    int? streakShields,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      email: email ?? this.email,
+      name: name ?? this.name,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      xp: xp ?? this.xp,
+      level: level ?? this.level,
+      streakShields: streakShields ?? this.streakShields,
+    );
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'],
@@ -37,4 +63,17 @@ class UserModel {
       streakShields: json['streakShields'] ?? 0,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'userId': userId,
+        'email': email,
+        'name': name,
+        'avatarUrl': avatarUrl,
+        'city': city,
+        'state': state,
+        'xp': xp,
+        'level': level,
+        'streakShields': streakShields,
+      };
 }

@@ -65,6 +65,17 @@ class SyncManager {
     }
   }
 
+  /// Get a list of all currently queued pending sync actions.
+  List<SyncAction> getPendingActions() {
+    try {
+      if (!_syncBox.isOpen || _syncBox.isEmpty) return [];
+      return _syncBox.values.map((v) => SyncAction.fromJson(jsonDecode(v))).toList();
+    } catch (e) {
+      debugPrint('[SyncManager] Error reading pending actions: $e');
+      return [];
+    }
+  }
+
   /// Add an action to the sync queue.
   Future<void> enqueueAction(String method, String path, {dynamic data}) async {
     final id = DateTime.now().millisecondsSinceEpoch.toString();

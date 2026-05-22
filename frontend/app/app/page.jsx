@@ -10,8 +10,9 @@ import {
   Lock, Rocket, StickyNote, Play, BookOpen, 
   Plus, Clock 
 } from 'lucide-react';
-import useStore from '@/store/useStore';
+import useStore, { getLevelForXp, getXpThresholdForLevel } from '@/store/useStore';
 import toast from 'react-hot-toast';
+import { getXpForDifficulty, normaliseComplexity } from '@/lib/xp';
 
 export default function Dashboard() {
   const { 
@@ -54,11 +55,12 @@ export default function Dashboard() {
   const handleToggle = (habit) => {
     const isCompleting = !completions[`${habit.id}-${todayStr}`];
     toggleCompletion(habit.id, todayStr);
-    
-    if (isCompleting) {
-      const difficultyXp = { Easy: 10, Medium: 25, Hard: 50, Elite: 100 };
-      const amount = difficultyXp[habit.difficulty || 'Medium'];
-      
+
+    // Only show XP popup if habit is XP-eligible
+    const isEligible = habit.isXpEligible !== false;
+    if (isCompleting && isEligible) {
+      const amount = getXpForDifficulty(habit.difficulty);
+
       const id = new Date().getTime();
       setXpPopups(prev => [...prev, { id, amount }]);
       setTimeout(() => {
@@ -76,6 +78,13 @@ export default function Dashboard() {
   };
 
   const currentStreak = getStreak();
+
+  const currentLevelThreshold = getXpThresholdForLevel(level);
+  const nextLevelThreshold = getXpThresholdForLevel(level + 1);
+  const levelRange = nextLevelThreshold - currentLevelThreshold;
+  const xpInCurrentLevel = Math.max(0, xp - currentLevelThreshold);
+  const xpToNextLevel = Math.max(0, nextLevelThreshold - xp);
+  const levelPercent = levelRange > 0 ? Math.min(100, (xpInCurrentLevel / levelRange) * 100) : 0;
 
   const stats = [
     { label: 'Total XP', value: xp, icon: Zap, color: 'text-[#FF6B2C]', glow: 'shadow-[0_0_20px_rgba(255,107,44,0.2)]' },
@@ -205,7 +214,14 @@ export default function Dashboard() {
               <div className="space-y-4">
                 {habits.map((habit, index) => {
                   const isCompleted = completions[`${habit.id}-${todayStr}`];
-                  const difficultyXp = { Easy: 10, Medium: 25, Hard: 50, Elite: 100 };
+                  const isEligible = habit.isXpEligible !== false;
+                  const canonicalDiff = normaliseComplexity(habit.difficulty);
+                  const habitXp = getXpForDifficulty(habit.difficulty);
+                  // Complexity badge color logic using new labels
+                  const complexityColor =
+                    canonicalDiff === 'Elite' ? 'text-purple-400' :
+                    canonicalDiff === 'Advanced' ? 'text-orange-400' :
+                    'text-textMuted';
                   return (
                     <motion.div key={habit.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + index * 0.1 }} onClick={() => handleToggle(habit)} className={`flex items-center gap-6 p-5 md:p-6 rounded-2xl cursor-pointer transition-all border group/habit ${isCompleted ? 'bg-[#FF6B2C]/5 border-[#FF6B2C]/40 shadow-[inset_0_0_30px_rgba(255,107,44,0.05)]' : 'bg-white/[0.01] border-white/5 hover:border-white/20'}`}>
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-500 ${isCompleted ? 'bg-[#FF6B2C] border-[#FF6B2C] shadow-[0_0_20px_rgba(255,107,44,0.6)]' : 'border-2 border-white/10 group-hover/habit:border-[#FF6B2C]/50'}`}>
@@ -215,7 +231,16 @@ export default function Dashboard() {
                         <div className="flex items-center gap-3 flex-wrap">
                           <h3 className={`font-bold text-xl truncate transition-all duration-500 ${isCompleted ? 'text-white/40 line-through' : 'text-white'}`}>{habit.name || habit.title}</h3>
                           <span className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider transition-colors" style={{ color: getCategoryHexColor(habit.category) }}>{habit.category}</span>
-                          <span className={`px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider ${habit.difficulty === 'Elite' ? 'text-purple-400' : habit.difficulty === 'Hard' ? 'text-orange-400' : 'text-textMuted'}`}>{habit.difficulty} ({difficultyXp[habit.difficulty || 'Medium']} XP)</span>
+                          {/* Complexity badge — with XP or TRACKING ONLY */}
+                          {isEligible ? (
+                            <span className={`px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold uppercase tracking-wider ${complexityColor}`}>
+                              {canonicalDiff} (+{habitXp} XP)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md bg-white/[0.04] text-[9px] font-bold uppercase tracking-wider text-white/25 border border-white/[0.06]">
+                              TRACKING ONLY
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-textMuted mt-1 font-medium">{habit.goal || habit.frequency || 'Daily'} target cycle</p>
                       </div>
@@ -370,10 +395,10 @@ export default function Dashboard() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-white font-bold tracking-tight">Level {level}</span>
-                  <span className="text-textMuted font-medium">{500 - (xp % 500)} XP to Rank Up</span>
+                  <span className="text-textMuted font-medium">{xpToNextLevel} XP to Rank Up</span>
                 </div>
                 <div className="h-4 w-full bg-black/50 rounded-full overflow-hidden border border-white/5 p-1 backdrop-blur-md">
-                  <motion.div className="h-full bg-gradient-to-r from-[#FF6B2C] to-[#FFB347] rounded-full relative" initial={{ width: 0 }} animate={{ width: `${(xp % 500) / 5}%` }} transition={{ duration: 1.2, type: "spring" }} />
+                  <motion.div className="h-full bg-gradient-to-r from-[#FF6B2C] to-[#FFB347] rounded-full relative" initial={{ width: 0 }} animate={{ width: `${levelPercent}%` }} transition={{ duration: 1.2, type: "spring" }} />
                 </div>
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
                   <div><p className="text-[9px] text-textMuted font-bold uppercase tracking-widest mb-1">Today</p><p className="text-sm font-bold text-white">+{earnedToday} XP</p></div>

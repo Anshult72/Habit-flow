@@ -9,6 +9,11 @@ class HabitModel {
   final String difficulty;
   final int goal;
   final List<HabitCompletionModel> completions;
+  /// Whether this habit currently earns XP (computed by backend eligibility rules).
+  /// Nullable so hot-reload stale instances and absent JSON keys are both safe.
+  final bool? isXpEligible;
+  /// XP awarded per completion. Null when not yet computed.
+  final int? xpValue;
 
   HabitModel({
     required this.id,
@@ -21,6 +26,8 @@ class HabitModel {
     required this.difficulty,
     required this.goal,
     required this.completions,
+    this.isXpEligible,      // null means "assume eligible" — treated as true in UI
+    this.xpValue,           // null means "use complexity default" — computed in UI
   });
 
   bool get isCompleted {
@@ -40,6 +47,8 @@ class HabitModel {
     int? goal,
     List<HabitCompletionModel>? completions,
     bool? isCompleted, // Added to support manual toggle if needed in notifier
+    bool? isXpEligible,
+    int? xpValue,
   }) {
     // If isCompleted is passed, we update today's completion
     List<HabitCompletionModel> updatedCompletions = completions ?? this.completions;
@@ -72,6 +81,8 @@ class HabitModel {
       difficulty: difficulty ?? this.difficulty,
       goal: goal ?? this.goal,
       completions: updatedCompletions,
+      isXpEligible: isXpEligible ?? this.isXpEligible,
+      xpValue: xpValue ?? this.xpValue,
     );
   }
 
@@ -84,11 +95,14 @@ class HabitModel {
       color: json['color'] ?? '#FF6B2C',
       icon: json['icon'] ?? 'Zap',
       frequency: json['frequency'] ?? 'Daily',
-      difficulty: json['difficulty'] ?? 'Medium',
+      difficulty: json['difficulty'] ?? 'Standard',
       goal: json['goal'] ?? 30,
       completions: (json['completions'] as List? ?? [])
           .map((e) => HabitCompletionModel.fromJson(e))
           .toList(),
+      // '!= false' safely handles null (absent key) → true (eligible by default)
+      isXpEligible: json['isXpEligible'] != false ? true : false,
+      xpValue: (json['xpValue'] is int) ? (json['xpValue'] as int) : null,
     );
   }
 
@@ -104,6 +118,8 @@ class HabitModel {
       'difficulty': difficulty,
       'goal': goal,
       'completions': completions.map((e) => e.toJson()).toList(),
+      'isXpEligible': isXpEligible,
+      'xpValue': xpValue,
     };
   }
 }
@@ -123,7 +139,9 @@ class HabitCompletionModel {
     return HabitCompletionModel(
       id: json['id'],
       date: json['date'],
-      completed: json['completed'] ?? true,
+      // Safe bool parsing: json['completed'] is dynamic; guard against null/int
+      // values that could sneak through from cached data or unexpected formats.
+      completed: json['completed'] is bool ? json['completed'] as bool : true,
     );
   }
 

@@ -1,15 +1,12 @@
 import 'dart:ui';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/realtime_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:confetti/confetti.dart';
 import '../core/theme/app_theme.dart';
 import '../core/widgets/hf_premium_widgets.dart';
-import '../core/widgets/confetti_provider.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'habits/habits_screen.dart';
 import 'focus/focus_screen.dart';
@@ -33,13 +30,9 @@ class MainLayout extends ConsumerStatefulWidget {
 }
 
 class _MainLayoutState extends ConsumerState<MainLayout> {
-  late ConfettiController _confettiController;
-
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
-    
     // Initialize real-time listeners
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(realtimeServiceProvider).init();
@@ -48,20 +41,12 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   @override
   void dispose() {
-    _confettiController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedIndex = ref.watch(bottomNavIndexProvider);
-
-    // Listen for global events (confetti, etc.)
-    ref.listen(globalEventProvider, (previous, next) {
-      if (next == GlobalEvent.confetti) {
-        _confettiController.play();
-      }
-    });
 
     final List<Widget> screens = [
       const DashboardScreen(),
@@ -135,23 +120,6 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                 key: ValueKey<int>(selectedIndex),
                 child: screens[selectedIndex],
               ),
-            ),
-          ),
-
-          // ─── Confetti Overlay ─────────────────────────────────────
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              colors: const [
-                AppTheme.primary,
-                AppTheme.accent,
-                Colors.orange,
-                Colors.yellow,
-              ],
-              createParticlePath: _drawStar,
             ),
           ),
 
@@ -252,28 +220,5 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         ),
       ),
     );
-  }
-
-  /// Path for star shape confetti
-  Path _drawStar(Size size) {
-    double degToRad(double deg) => deg * (pi / 180.0);
-    const numberOfPoints = 5;
-    final halfWidth = size.width / 2;
-    final externalRadius = halfWidth;
-    final internalRadius = halfWidth / 2.5;
-    final degreesPerStep = degToRad(360 / numberOfPoints);
-    final halfDegreesPerStep = degreesPerStep / 2;
-    final path = Path();
-    final fullAngle = degToRad(360);
-    path.moveTo(size.width, halfWidth);
-
-    for (double step = 0; step < fullAngle; step += degreesPerStep) {
-      path.lineTo(halfWidth + externalRadius * cos(step),
-          halfWidth + externalRadius * sin(step));
-      path.lineTo(halfWidth + internalRadius * cos(step + halfDegreesPerStep),
-          halfWidth + internalRadius * sin(step + halfDegreesPerStep));
-    }
-    path.close();
-    return path;
   }
 }

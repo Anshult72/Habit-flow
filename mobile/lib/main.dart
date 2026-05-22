@@ -21,6 +21,9 @@ void main() async {
   // Initialize LocalStorageService
   final localStorageService = LocalStorageService();
   await localStorageService.init();
+  
+  // CRITICAL ONE-TIME FIX: Clear cache to wipe legacy XP data for testing reset
+  await localStorageService.clearCache();
 
   // Initialize Supabase Auth (same project as web frontend)
   await Supabase.initialize(

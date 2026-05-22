@@ -2,6 +2,8 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { User } from '@prisma/client';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -10,7 +12,9 @@ export class UsersService implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
 
   async onModuleInit() {
+    await this.cleanResetTestingData();
     await this.migrateExistingUsers();
+    await this.migrateHabitComplexityLabels();
   }
 
   private generateSecureUserId(): string {
@@ -83,6 +87,40 @@ export class UsersService implements OnModuleInit {
     this.logger.log('Migration complete.');
   }
 
+  /**
+   * Self-healing startup migration for Habit complexity labels.
+   * Safely maps deprecated values (easy/medium/hard) to canonical
+   * new values (Basic/Standard/Advanced) without touching Elite habits.
+   * Runs idempotently — already-migrated records are left unchanged.
+   */
+  private async migrateHabitComplexityLabels() {
+    this.logger.log('Checking Habit complexity labels for migration...');
+
+    const labelMap: Record<string, string> = {
+      easy: 'Basic',
+      Easy: 'Basic',
+      medium: 'Standard',
+      Medium: 'Standard',
+      hard: 'Advanced',
+      Hard: 'Advanced',
+    };
+
+    let migratedCount = 0;
+    for (const [oldLabel, newLabel] of Object.entries(labelMap)) {
+      const result = await this.prisma.habit.updateMany({
+        where: { difficulty: oldLabel },
+        data: { difficulty: newLabel },
+      });
+      migratedCount += result.count;
+    }
+
+    if (migratedCount > 0) {
+      this.logger.log(`Migrated ${migratedCount} habit(s) to new complexity labels.`);
+    } else {
+      this.logger.log('All Habit complexity labels are up-to-date.');
+    }
+  }
+
   async findOne(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { email },
@@ -144,19 +182,82 @@ export class UsersService implements OnModuleInit {
     });
   }
 
+  getXpThresholdForLevel(level: number): number {
+    if (level <= 1) return 0;
+    return 12.5 * level * (level + 1) - 25;
+  }
+
+  getLevelForXp(xp: number): number {
+    if (xp <= 0) return 1;
+    let level = 1;
+    while (xp >= this.getXpThresholdForLevel(level + 1)) {
+      level++;
+    }
+    return level;
+  }
+
+  async cleanResetTestingData() {
+    const sentinelPath = path.join(__dirname, '..', '..', '..', '.clean-reset-done');
+    if (fs.existsSync(sentinelPath)) {
+      this.logger.log('Clean reset sentinel file exists, skipping database wipe.');
+      return;
+    }
+
+    this.logger.log('Sentinel file not found. Performing full clean database reset for internal testing accounts...');
+
+    try {
+      await this.prisma.$transaction([
+        this.prisma.duelParticipant.deleteMany(),
+        this.prisma.duelRequest.deleteMany(),
+        this.prisma.duel.deleteMany(),
+        this.prisma.squadMember.deleteMany(),
+        this.prisma.squadRequest.deleteMany(),
+        this.prisma.squad.deleteMany(),
+        this.prisma.xPLog.deleteMany(),
+        this.prisma.habitCompletion.deleteMany(),
+        this.prisma.focusSession.deleteMany(),
+        this.prisma.notification.deleteMany(),
+        this.prisma.user.updateMany({
+          data: {
+            xp: 0,
+            level: 1,
+            streakShields: 2,
+          },
+        }),
+      ]);
+
+      fs.writeFileSync(sentinelPath, `Reset performed at: ${new Date().toISOString()}`);
+      this.logger.log('Clean database reset successfully executed. Sentinel file written.');
+    } catch (error) {
+      this.logger.error('Failed to perform clean database reset:', error);
+    }
+  }
+
   async deductXP(userId: string, amount: number, reason: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.xp < amount) throw new Error('Insufficient XP');
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { xp: true },
+    });
+    if (!user) throw new Error('User not found');
+
+    const actualDeduction = Math.min(amount, user.xp);
+    if (actualDeduction <= 0) return;
+
+    const newXp = user.xp - actualDeduction;
+    const newLevel = this.getLevelForXp(newXp);
 
     return this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
-        data: { xp: { decrement: amount } },
+        data: {
+          xp: newXp,
+          level: newLevel,
+        },
       }),
       this.prisma.xPLog.create({
         data: {
           userId,
-          amount: -amount,
+          amount: -actualDeduction,
           date: new Date().toISOString().split('T')[0],
         },
       }),
@@ -164,10 +265,25 @@ export class UsersService implements OnModuleInit {
   }
 
   async addXP(userId: string, amount: number, reason: string) {
-    return this.prisma.$transaction([
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { xp: true, level: true },
+    });
+    if (!user) throw new Error('User not found');
+
+    const newXp = Math.max(0, user.xp + amount);
+    const newLevel = this.getLevelForXp(newXp);
+
+    const oldLevel = user.level;
+    const isLevelUp = newLevel > oldLevel;
+
+    const result = await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
-        data: { xp: { increment: amount } },
+        data: {
+          xp: newXp,
+          level: newLevel,
+        },
       }),
       this.prisma.xPLog.create({
         data: {
@@ -177,5 +293,23 @@ export class UsersService implements OnModuleInit {
         },
       }),
     ]);
+
+    if (isLevelUp) {
+      try {
+        await this.prisma.notification.create({
+          data: {
+            userId,
+            title: 'Level Up!',
+            message: `Congratulations! You have reached Level ${newLevel}! Keep up the great work!`,
+            type: 'level_up',
+            isRead: false,
+          },
+        });
+      } catch (err) {
+        this.logger.error('Failed to create level-up notification', err);
+      }
+    }
+
+    return result;
   }
 }

@@ -61,8 +61,10 @@ model Habit {
   color      String   @default("#FF6B2C")
   icon       String   @default("Zap")
   frequency  String   @default("Daily")
-  difficulty String   @default("Medium")
+  difficulty String   @default("Standard")
   goal       Int      @default(30)
+  isActive   Boolean  @default(true)
+  isArchived Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

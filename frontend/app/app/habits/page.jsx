@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, X, Sparkles, Search, Filter, Layers, Zap, Flame, T
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import useStore from '@/store/useStore';
+import { DIFFICULTY_TIERS, normaliseComplexity, getXpForDifficulty } from '@/lib/xp';
 
 export default function Habits() {
   const { habits, addHabit, updateHabit, deleteHabit, syncData, bundles } = useStore();
@@ -26,26 +27,21 @@ export default function Habits() {
     return map[cat] || '#FF6B2C';
   };
 
-  const [formData, setFormData] = useState({ name: '', category: 'Health', color: getCategoryHexColor('Health'), goal: 30, difficulty: 'Medium' });
+  const [formData, setFormData] = useState({ name: '', category: 'Health', color: getCategoryHexColor('Health'), goal: 30, difficulty: 'Standard', isActive: true });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
 
   const categories = ['Health', 'Mindfulness', 'Learning', 'Fitness', 'Productivity', 'Finance', 'Deep Work', 'Detox'];
-  const difficulties = [
-    { label: 'Easy', xp: 10, color: 'text-green-400' },
-    { label: 'Medium', xp: 25, color: 'text-blue-400' },
-    { label: 'Hard', xp: 50, color: 'text-orange-400' },
-    { label: 'Elite', xp: 100, color: 'text-purple-400' },
-  ];
+  const difficulties = DIFFICULTY_TIERS;
 
   const templates = [
     { name: 'Monk Mode', category: 'Deep Work', color: getCategoryHexColor('Deep Work'), goal: 30, difficulty: 'Elite' },
-    { name: 'Dopamine Detox', category: 'Detox', color: getCategoryHexColor('Detox'), goal: 30, difficulty: 'Hard' },
-    { name: 'Fitness Routine', category: 'Fitness', color: getCategoryHexColor('Fitness'), goal: 20, difficulty: 'Medium' },
-    { name: 'Study System', category: 'Learning', color: getCategoryHexColor('Learning'), goal: 25, difficulty: 'Hard' },
-    { name: 'Morning Routine', category: 'Productivity', color: getCategoryHexColor('Productivity'), goal: 28, difficulty: 'Medium' },
+    { name: 'Dopamine Detox', category: 'Detox', color: getCategoryHexColor('Detox'), goal: 30, difficulty: 'Advanced' },
+    { name: 'Fitness Routine', category: 'Fitness', color: getCategoryHexColor('Fitness'), goal: 20, difficulty: 'Standard' },
+    { name: 'Study System', category: 'Learning', color: getCategoryHexColor('Learning'), goal: 25, difficulty: 'Advanced' },
+    { name: 'Morning Routine', category: 'Productivity', color: getCategoryHexColor('Productivity'), goal: 28, difficulty: 'Standard' },
   ];
 
   // Fetch habits from API on mount
@@ -80,9 +76,9 @@ export default function Habits() {
 
   const activateBundle = async (bundle) => {
     const bundleHabits = [
-      { name: 'Cold Shower', category: 'Health', color: getCategoryHexColor('Health'), goal: 30, difficulty: 'Hard' },
-      { name: 'Morning Journal', category: 'Mindfulness', color: getCategoryHexColor('Mindfulness'), goal: 30, difficulty: 'Easy' },
-      { name: 'Deep Meditation', category: 'Mindfulness', color: getCategoryHexColor('Mindfulness'), goal: 30, difficulty: 'Medium' }
+      { name: 'Cold Shower', category: 'Health', color: getCategoryHexColor('Health'), goal: 30, difficulty: 'Advanced' },
+      { name: 'Morning Journal', category: 'Mindfulness', color: getCategoryHexColor('Mindfulness'), goal: 30, difficulty: 'Basic' },
+      { name: 'Deep Meditation', category: 'Mindfulness', color: getCategoryHexColor('Mindfulness'), goal: 30, difficulty: 'Standard' }
     ];
     for (const h of bundleHabits) {
       await addHabit(h);
@@ -101,11 +97,13 @@ export default function Habits() {
         category: habit.category, 
         color: habit.color || getCategoryHexColor(habit.category), 
         goal: habit.goal, 
-        difficulty: habit.difficulty || 'Medium' 
+        difficulty: habit.difficulty || 'Standard',
+        isActive: habit.isActive !== false,
+        isArchived: habit.isArchived === true
       });
     } else {
       setEditingId(null);
-      setFormData({ name: '', category: 'Health', color: getCategoryHexColor('Health'), goal: 30, difficulty: 'Medium' });
+      setFormData({ name: '', category: 'Health', color: getCategoryHexColor('Health'), goal: 30, difficulty: 'Standard', isActive: true, isArchived: false });
     }
     setIsModalOpen(true);
   };
@@ -217,9 +215,17 @@ export default function Habits() {
                     <h3 className="font-display font-bold text-xl text-white mb-1">{getHabitName(habit)}</h3>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] px-2 py-0.5 bg-white/5 border border-white/10 rounded uppercase tracking-wide" style={{ color: getCategoryHexColor(habit.category) }}>{habit.category}</span>
-                      <span className={`text-[10px] px-2 py-0.5 bg-white/5 border border-white/10 rounded uppercase tracking-wide font-bold ${difficulties.find(d => d.label === habit.difficulty)?.color || 'text-white'}`}>
-                        {habit.difficulty || 'Medium'}
-                      </span>
+                      {habit.isActive === false ? (
+                        <span className="text-[10px] px-2 py-0.5 bg-white/[0.02] border border-white/[0.04] rounded uppercase tracking-wide text-white/20">Inactive</span>
+                      ) : habit.isXpEligible !== false ? (
+                        <span className={`text-[10px] px-2 py-0.5 bg-white/5 border border-white/10 rounded uppercase tracking-wide font-bold ${difficulties.find(d => d.label === normaliseComplexity(habit.difficulty))?.color || 'text-white'}`}>
+                          {normaliseComplexity(habit.difficulty)}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 bg-white/[0.04] border border-white/[0.06] rounded uppercase tracking-wide font-bold text-white/25">
+                          TRACKING ONLY
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -235,7 +241,11 @@ export default function Habits() {
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-textMuted uppercase tracking-wider mb-1">XP Value</p>
-                  <p className="font-bold text-[#FF8C42]">{difficulties.find(d => d.label === habit.difficulty)?.xp || 25} XP</p>
+                  <p className="font-bold text-[#FF8C42]">
+                    {habit.isActive !== false && habit.isXpEligible !== false 
+                      ? `${getXpForDifficulty(habit.difficulty)} XP` 
+                      : '0 XP'}
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -322,6 +332,20 @@ export default function Habits() {
                   <input type="number" min="1" max="31" value={formData.goal} onChange={(e) => setFormData({ ...formData, goal: parseInt(e.target.value) || 0 })}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3 text-white focus:outline-none focus:border-[#FF6B2C] transition-all font-medium font-display text-xl"
                   />
+                </div>
+
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                  <input 
+                    type="checkbox" 
+                    id="isActiveToggle"
+                    checked={formData.isActive !== false} 
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="w-4 h-4 rounded border-white/10 bg-black/40 text-[#FF6B2C] focus:ring-[#FF6B2C] cursor-pointer"
+                  />
+                  <div>
+                    <label htmlFor="isActiveToggle" className="block text-xs font-bold text-white uppercase tracking-wider cursor-pointer">Active Tracking</label>
+                    <p className="text-[10px] text-textMuted mt-0.5 leading-normal">Disable to pause XP earning and streak tracking for this protocol.</p>
+                  </div>
                 </div>
                 <div className="pt-4 flex gap-4">
                   <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-colors font-medium">Abort</button>

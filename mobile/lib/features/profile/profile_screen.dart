@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/widgets/hf_premium_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,10 +45,9 @@ class ProfileScreen extends ConsumerWidget {
                       alignment: Alignment.topRight,
                       child: GestureDetector(
                         onTap: () {
-                          showModalBottomSheet(
+                          showDialog(
                             context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
+                            barrierDismissible: true,
                             builder: (ctx) => EditProfileDialog(user: user),
                           );
                         },
@@ -64,7 +64,11 @@ class ProfileScreen extends ConsumerWidget {
                     CircleAvatar(
                       radius: 44.r,
                       backgroundColor: Colors.white.withValues(alpha: 0.05),
-                      backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+                      backgroundImage: user.avatarUrl != null 
+                          ? (user.avatarUrl!.startsWith('http')
+                              ? NetworkImage(user.avatarUrl!)
+                              : FileImage(File(user.avatarUrl!)) as ImageProvider)
+                          : null,
                       child: user.avatarUrl == null ? Icon(Icons.person, size: 40.sp, color: Colors.white24) : null,
                     ),
                     SizedBox(height: 16.h),

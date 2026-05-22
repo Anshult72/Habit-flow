@@ -2,9 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/habit_model.dart';
 import '../../services/habit_service.dart';
 import '../network/api_client.dart';
-import '../widgets/confetti_provider.dart';
 import '../storage/local_storage_service.dart';
 import '../sync/sync_manager.dart';
+import '../../services/user_service.dart';
+import '../utils/xp_level_engine.dart';
 
 class HabitsNotifier extends AsyncNotifier<List<HabitModel>> {
   @override
@@ -13,19 +14,47 @@ class HabitsNotifier extends AsyncNotifier<List<HabitModel>> {
   }
 
   Future<void> toggleHabit(String habitId, String date) async {
+    // Optimistic UI Update: Instantly toggle the state in memory before saving to cache/disk
+    final previousState = state;
+    if (state.hasValue) {
+      state = AsyncData(state.value!.map((h) {
+        if (h.id == habitId) {
+          final isCompleted = h.completions.any((c) => c.date == date && c.completed);
+          final newCompletions = List<HabitCompletionModel>.from(h.completions);
+          if (isCompleted) {
+            newCompletions.removeWhere((c) => c.date == date);
+            
+            // Revert XP optimistically
+            if (h.isXpEligible != false) {
+              final xp = h.xpValue ?? XpLevelEngine.getXpForDifficulty(h.difficulty);
+              ref.read(userProfileProvider.notifier).addOptimisticXp(-xp);
+            }
+          } else {
+            newCompletions.add(HabitCompletionModel(id: 'temp_$date', date: date, completed: true));
+            
+            // Add XP optimistically
+            if (h.isXpEligible != false) {
+              final xp = h.xpValue ?? XpLevelEngine.getXpForDifficulty(h.difficulty);
+              ref.read(userProfileProvider.notifier).addOptimisticXp(xp);
+            }
+          }
+          return h.copyWith(completions: newCompletions);
+        }
+        return h;
+      }).toList());
+    }
+
     try {
-      // 1. Service handles local cache update and sync queue
+      // 1. Service handles local cache update and sync queue asynchronously
       final updatedHabit = await ref.read(habitServiceProvider).toggleHabit(habitId, date);
       
-      // 2. Trigger Confetti if completed
-      final completion = updatedHabit.completions.where((c) => c.date == date).firstOrNull;
-      if (completion != null && completion.completed) {
-        ref.triggerEvent(GlobalEvent.confetti);
+      // 2. Re-sync state with local cache seamlessly (no invalidateSelf to prevent lag/flicker)
+      if (state.hasValue) {
+        state = AsyncData(state.value!.map((h) => h.id == habitId ? updatedHabit : h).toList());
       }
-
-      // 3. Re-sync state with local cache
-      ref.invalidateSelf();
     } catch (e) {
+      // Revert optimistic update on failure
+      state = previousState;
       rethrow;
     }
   }

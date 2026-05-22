@@ -4,6 +4,8 @@ import '../models/learning_model.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/local_storage_service.dart';
 import '../core/sync/sync_manager.dart';
+import '../core/learning/learning_xp_engine.dart';
+import 'user_service.dart';
 
 class LearningService {
   final Dio _dio;
@@ -18,8 +20,16 @@ class LearningService {
   // --- Helpers ---
   List<SubjectModel> _getCachedSubjects() {
     final data = _localStorage.readData(_subjectsCacheKey);
-    if (data != null) {
-      return (data as List).map((e) => SubjectModel.fromJson(e)).toList();
+    if (data != null && data is List) {
+      final List<SubjectModel> result = [];
+      for (final e in data) {
+        try {
+          result.add(SubjectModel.fromJson(Map<String, dynamic>.from(e as Map)));
+        } catch (_) {
+          // Skip corrupt/stale cache entries
+        }
+      }
+      return result;
     }
     return [];
   }
@@ -30,13 +40,17 @@ class LearningService {
 
   SubjectModel? _getCachedSubjectDetails(String id) {
     final data = _localStorage.readData(_subjectDetailsCacheKey(id));
-    if (data != null) {
-      return SubjectModel.fromJson(data);
+    if (data != null && data is Map) {
+      try {
+        return SubjectModel.fromJson(Map<String, dynamic>.from(data));
+      } catch (_) {
+        return null;
+      }
     }
     return null;
   }
 
-  Future<void> _saveSubjectDetailsToCache(String id, SubjectModel subject) async {
+  Future<void> saveSubjectDetailsToCache(String id, SubjectModel subject) async {
     await _localStorage.saveData(_subjectDetailsCacheKey(id), subject.toJson());
   }
 
@@ -47,7 +61,7 @@ class LearningService {
 
     try {
       final response = await _dio.get('/learning/subjects');
-      subjects = (response.data as List).map((e) => SubjectModel.fromJson(e)).toList();
+      subjects = (response.data as List).map((e) => SubjectModel.fromJson(Map<String, dynamic>.from(e as Map))).toList();
       await _saveSubjectsToCache(subjects);
     } catch (e) {
       if (subjects.isEmpty) rethrow;
@@ -61,8 +75,8 @@ class LearningService {
 
     try {
       final response = await _dio.get('/learning/subjects/$id');
-      subject = SubjectModel.fromJson(response.data);
-      await _saveSubjectDetailsToCache(id, subject);
+      subject = SubjectModel.fromJson(Map<String, dynamic>.from(response.data as Map));
+      await saveSubjectDetailsToCache(id, subject);
     } catch (e) {
       if (subject == null) rethrow;
     }
@@ -110,7 +124,7 @@ class LearningService {
         chapters: chapters,
         count: subject.count,
       );
-      await _saveSubjectDetailsToCache(subjectId, updatedSubject);
+      await saveSubjectDetailsToCache(subjectId, updatedSubject);
     }
 
     await _syncManager.enqueueAction('POST', '/learning/chapters', data: {'subjectId': subjectId, 'title': title});
@@ -137,7 +151,7 @@ class LearningService {
         return ch;
       }).toList();
 
-      await _saveSubjectDetailsToCache(subjectId, SubjectModel(
+      await saveSubjectDetailsToCache(subjectId, SubjectModel(
         id: subject.id,
         title: subject.title,
         category: subject.category,
@@ -178,7 +192,7 @@ class LearningService {
         return ch;
       }).toList();
 
-      await _saveSubjectDetailsToCache(subjectId, SubjectModel(
+      await saveSubjectDetailsToCache(subjectId, SubjectModel(
         id: subject.id,
         title: subject.title,
         category: subject.category,
@@ -241,21 +255,317 @@ class SubjectDetailsNotifier extends FamilyAsyncNotifier<SubjectModel, String> {
   }
 
   Future<void> addChapter(String title) async {
-    await ref.read(learningServiceProvider).addChapter(arg, title);
-    ref.invalidateSelf();
-    ref.invalidate(subjectsProvider);
+    final currentSubject = state.value;
+    if (currentSubject != null) {
+      final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+      final tempChapter = ChapterModel(
+        id: tempId,
+        title: title,
+        status: 'Ready to Begin',
+        progress: 0,
+        topics: [],
+      );
+
+      final List<ChapterModel> updatedChapters = [...(currentSubject.chapters ?? []), tempChapter];
+      
+      final updatedSubject = SubjectModel(
+        id: currentSubject.id,
+        title: currentSubject.title,
+        category: currentSubject.category,
+        progress: currentSubject.progress,
+        chapters: updatedChapters,
+        count: currentSubject.count,
+        streakCount: currentSubject.streakCount,
+        lastStreakDate: currentSubject.lastStreakDate,
+        completedTopicsLog: currentSubject.completedTopicsLog,
+        xpAwardedTopics: currentSubject.xpAwardedTopics,
+        moduleCompletionBonusAwarded: currentSubject.moduleCompletionBonusAwarded,
+        chapterCompletionBonusAwarded: currentSubject.chapterCompletionBonusAwarded,
+        xpEarned: currentSubject.xpEarned,
+        totalHours: currentSubject.totalHours,
+        unlockedModules: currentSubject.unlockedModules,
+      );
+
+      state = AsyncData(updatedSubject);
+    }
+
+    ref.read(learningServiceProvider).addChapter(arg, title).then((_) {
+      ref.invalidate(subjectsProvider);
+    });
   }
 
   Future<void> addTopic(String chapterId, String title) async {
-    await ref.read(learningServiceProvider).addTopic(arg, chapterId, title);
-    ref.invalidateSelf();
-    ref.invalidate(subjectsProvider);
+    final currentSubject = state.value;
+    if (currentSubject != null) {
+      final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+      final tempTopic = TopicModel(id: tempId, title: title, status: 'Ready to Begin');
+      
+      final updatedChapters = currentSubject.chapters?.map((ch) {
+        if (ch.id == chapterId) {
+          final List<TopicModel> updatedTopics = [...(ch.topics ?? []), tempTopic];
+          final completed = updatedTopics.where((t) => t.status == 'Completed').length;
+          final progress = updatedTopics.isEmpty ? 0 : ((completed / updatedTopics.length) * 100).round();
+          
+          return ChapterModel(
+            id: ch.id,
+            title: ch.title,
+            status: progress == 100 ? 'Completed' : (progress > 0 ? 'In Progress' : 'Not Started'),
+            progress: progress,
+            notes: ch.notes,
+            topics: updatedTopics,
+          );
+        }
+        return ch;
+      }).toList();
+
+      final updatedSubject = SubjectModel(
+        id: currentSubject.id,
+        title: currentSubject.title,
+        category: currentSubject.category,
+        progress: currentSubject.progress,
+        chapters: updatedChapters,
+        count: currentSubject.count,
+        streakCount: currentSubject.streakCount,
+        lastStreakDate: currentSubject.lastStreakDate,
+        completedTopicsLog: currentSubject.completedTopicsLog,
+        xpAwardedTopics: currentSubject.xpAwardedTopics,
+        moduleCompletionBonusAwarded: currentSubject.moduleCompletionBonusAwarded,
+        chapterCompletionBonusAwarded: currentSubject.chapterCompletionBonusAwarded,
+        xpEarned: currentSubject.xpEarned,
+        totalHours: currentSubject.totalHours,
+        unlockedModules: currentSubject.unlockedModules,
+      );
+
+      state = AsyncData(updatedSubject);
+    }
+
+    ref.read(learningServiceProvider).addTopic(arg, chapterId, title).then((_) {
+      ref.invalidate(subjectsProvider);
+    });
   }
 
   Future<void> toggleTopic(String chapterId, String topicId, bool completed) async {
-    final status = completed ? 'Completed' : 'Not Started';
-    await ref.read(learningServiceProvider).updateTopic(arg, chapterId, topicId, status);
-    ref.invalidateSelf();
-    ref.invalidate(subjectsProvider);
+    if (completed) {
+      await completeTopicWithXp(chapterId, topicId);
+    } else {
+      await updateTopicStatus(chapterId, topicId, 'Ready to Begin');
+    }
+  }
+
+  Future<Map<String, dynamic>?> completeTopicWithXp(String chapterId, String topicId) async {
+    final currentSubject = state.value;
+    if (currentSubject == null) return null;
+
+    final currentStreak = currentSubject.streakCount;
+    final lastStreakDate = currentSubject.lastStreakDate;
+    final streakResult = LearningXpEngine.calculateUpdatedStreak(currentStreak, lastStreakDate);
+    final nextStreak = streakResult.newStreak;
+    final todayStr = LearningXpEngine.formatDate(DateTime.now());
+
+    final completedTopicsLog = Map<String, int>.from(currentSubject.completedTopicsLog);
+    final xpAwardedTopics = Map<String, bool>.from(currentSubject.xpAwardedTopics);
+
+    final topicXpResult = LearningXpEngine.calculateTopicXp(
+      nextStreak,
+      topicId,
+      chapterId,
+      completedTopicsLog,
+      xpAwardedTopics,
+    );
+
+    final isTopicXpEligible = topicXpResult.eligible;
+    final topicXpEarned = topicXpResult.xp;
+    int totalEarnedXp = topicXpEarned;
+
+    final updatedXpAwardedTopics = Map<String, bool>.from(xpAwardedTopics);
+    final updatedCompletedTopicsLog = Map<String, int>.from(completedTopicsLog);
+
+    if (isTopicXpEligible && topicXpEarned > 0) {
+      updatedXpAwardedTopics[topicId] = true;
+      updatedCompletedTopicsLog[chapterId] = (updatedCompletedTopicsLog[chapterId] ?? 0) + 1;
+    }
+
+    ChapterModel? targetChapter;
+    final updatedChapters = currentSubject.chapters?.map((ch) {
+      if (ch.id == chapterId) {
+        final updatedTopics = ch.topics?.map((t) {
+          if (t.id == topicId) {
+            return TopicModel(id: t.id, title: t.title, status: 'Completed');
+          }
+          return t;
+        }).toList() ?? [];
+
+        final completed = updatedTopics.where((t) => t.status == 'Completed').length;
+        final total = updatedTopics.length;
+        final progress = total == 0 ? 0 : ((completed / total) * 100).round();
+
+        targetChapter = ChapterModel(
+          id: ch.id,
+          title: ch.title,
+          status: progress == 100 ? 'Completed' : (progress > 0 ? 'In Progress' : 'Not Started'),
+          progress: progress,
+          notes: ch.notes,
+          topics: updatedTopics,
+        );
+        return targetChapter!;
+      }
+      return ch;
+    }).toList();
+
+    int moduleBonusXp = 0;
+    final moduleCompletionBonusAwarded = Map<String, bool>.from(currentSubject.moduleCompletionBonusAwarded);
+
+    if (targetChapter != null && targetChapter!.status == 'Completed') {
+      final hasBonus = moduleCompletionBonusAwarded[chapterId] == true;
+      if (!hasBonus) {
+        moduleBonusXp = LearningXpEngine.calculateModuleBonus(nextStreak);
+        totalEarnedXp += moduleBonusXp;
+        moduleCompletionBonusAwarded[chapterId] = true;
+      }
+    }
+
+    int chapterBonusXp = 0;
+    final chapterCompletionBonusAwarded = Map<String, bool>.from(currentSubject.chapterCompletionBonusAwarded);
+
+    if (updatedChapters != null && LearningXpEngine.isChapterComplete(updatedChapters)) {
+      final hasBonus = chapterCompletionBonusAwarded['__subject__'] == true;
+      if (!hasBonus) {
+        chapterBonusXp = LearningXpEngine.calculateChapterBonus(nextStreak);
+        totalEarnedXp += chapterBonusXp;
+        chapterCompletionBonusAwarded['__subject__'] = true;
+      }
+    }
+
+    final totalChapters = updatedChapters?.length ?? 1;
+    final sumChapterProgress = updatedChapters?.fold<int>(0, (sum, ch) => sum + ch.progress) ?? 0;
+    final subjectProgress = totalChapters == 0 ? 0 : (sumChapterProgress / totalChapters).round();
+
+    final updatedSubject = SubjectModel(
+      id: currentSubject.id,
+      title: currentSubject.title,
+      category: currentSubject.category,
+      progress: subjectProgress,
+      chapters: updatedChapters,
+      count: currentSubject.count,
+      streakCount: nextStreak,
+      lastStreakDate: todayStr,
+      completedTopicsLog: updatedCompletedTopicsLog,
+      xpAwardedTopics: updatedXpAwardedTopics,
+      moduleCompletionBonusAwarded: moduleCompletionBonusAwarded,
+      chapterCompletionBonusAwarded: chapterCompletionBonusAwarded,
+      xpEarned: currentSubject.xpEarned + totalEarnedXp,
+      totalHours: currentSubject.totalHours,
+      unlockedModules: currentSubject.unlockedModules,
+    );
+
+    state = AsyncData(updatedSubject);
+
+    if (totalEarnedXp > 0) {
+      await ref.read(userServiceProvider).addLocalXp(totalEarnedXp);
+      ref.invalidate(userProfileProvider);
+    }
+
+    ref.read(learningServiceProvider).updateTopic(arg, chapterId, topicId, 'Completed').then((_) {
+      ref.invalidate(subjectsProvider);
+    });
+
+    return {
+      'xpEarned': topicXpEarned,
+      'moduleBonus': moduleBonusXp,
+      'chapterBonus': chapterBonusXp,
+      'totalXp': totalEarnedXp,
+      'streak': nextStreak,
+      'isStreakMilestone': streakResult.isStreakMilestone,
+    };
+  }
+
+  Future<void> updateTopicStatus(String chapterId, String topicId, String status) async {
+    final currentSubject = state.value;
+    if (currentSubject != null) {
+      final updatedChapters = currentSubject.chapters?.map((ch) {
+        if (ch.id == chapterId) {
+          final updatedTopics = ch.topics?.map((t) {
+            if (t.id == topicId) {
+              return TopicModel(id: t.id, title: t.title, status: status);
+            }
+            return t;
+          }).toList();
+
+          final completed = updatedTopics?.where((t) => t.status == 'Completed').length ?? 0;
+          final total = updatedTopics?.length ?? 1;
+          final progress = ((completed / total) * 100).round();
+
+          return ChapterModel(
+            id: ch.id,
+            title: ch.title,
+            status: progress == 100 ? 'Completed' : (progress > 0 ? 'In Progress' : 'Not Started'),
+            progress: progress,
+            notes: ch.notes,
+            topics: updatedTopics,
+          );
+        }
+        return ch;
+      }).toList();
+
+      final totalChapters = updatedChapters?.length ?? 1;
+      final sumChapterProgress = updatedChapters?.fold<int>(0, (sum, ch) => sum + ch.progress) ?? 0;
+      final subjectProgress = totalChapters == 0 ? 0 : (sumChapterProgress / totalChapters).round();
+
+      final updatedSubject = SubjectModel(
+        id: currentSubject.id,
+        title: currentSubject.title,
+        category: currentSubject.category,
+        progress: subjectProgress,
+        chapters: updatedChapters,
+        count: currentSubject.count,
+        streakCount: currentSubject.streakCount,
+        lastStreakDate: currentSubject.lastStreakDate,
+        completedTopicsLog: currentSubject.completedTopicsLog,
+        xpAwardedTopics: currentSubject.xpAwardedTopics,
+        moduleCompletionBonusAwarded: currentSubject.moduleCompletionBonusAwarded,
+        chapterCompletionBonusAwarded: currentSubject.chapterCompletionBonusAwarded,
+        xpEarned: currentSubject.xpEarned,
+        totalHours: currentSubject.totalHours,
+        unlockedModules: currentSubject.unlockedModules,
+      );
+
+      state = AsyncData(updatedSubject);
+    }
+
+    ref.read(learningServiceProvider).updateTopic(arg, chapterId, topicId, status).then((_) {
+      ref.invalidate(subjectsProvider);
+    });
+  }
+
+  /// Persist a soft-unlock decision so the module stays unlocked across sessions.
+  void unlockModule(String chapterId) {
+    final currentSubject = state.value;
+    if (currentSubject == null) return;
+
+    final updated = Map<String, bool>.from(currentSubject.unlockedModules);
+    updated[chapterId] = true;
+
+    final updatedSubject = SubjectModel(
+      id: currentSubject.id,
+      title: currentSubject.title,
+      category: currentSubject.category,
+      progress: currentSubject.progress,
+      chapters: currentSubject.chapters,
+      count: currentSubject.count,
+      streakCount: currentSubject.streakCount,
+      lastStreakDate: currentSubject.lastStreakDate,
+      completedTopicsLog: currentSubject.completedTopicsLog,
+      xpAwardedTopics: currentSubject.xpAwardedTopics,
+      moduleCompletionBonusAwarded: currentSubject.moduleCompletionBonusAwarded,
+      chapterCompletionBonusAwarded: currentSubject.chapterCompletionBonusAwarded,
+      xpEarned: currentSubject.xpEarned,
+      totalHours: currentSubject.totalHours,
+      unlockedModules: updated,
+    );
+
+    state = AsyncData(updatedSubject);
+
+    // Persist to cache
+    ref.read(learningServiceProvider).saveSubjectDetailsToCache(arg, updatedSubject);
   }
 }

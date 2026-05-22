@@ -2,6 +2,32 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { format, subDays, startOfWeek, startOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
+import { emitXpEvent } from '@/components/XpToast';
+import {
+  calculateTopicXp,
+  calculateUpdatedStreak,
+  calculateModuleBonus,
+  calculateChapterBonus,
+  isModuleComplete,
+  getXpPerTopic,
+  getStreakTier,
+} from '@/lib/learningXpEngine';
+import { getXpForDifficulty } from '@/lib/xp';
+
+// Dynamic leveling progression math formulas
+export function getXpThresholdForLevel(level) {
+  if (level <= 1) return 0;
+  return 12.5 * level * (level + 1) - 25;
+}
+
+export function getLevelForXp(xp) {
+  if (xp <= 0) return 1;
+  let level = 1;
+  while (xp >= getXpThresholdForLevel(level + 1)) {
+    level++;
+  }
+  return level;
+}
 
 const useStore = create(
   persist(
@@ -114,7 +140,7 @@ const useStore = create(
       matrixTasks: [], // Array of { id, title, desc, quadrant, completed, dueDate, tags }
 
       // Learning Hub System
-      subjects: [], // Array of { id, title, category, progress, chapters: [], totalHours, streak, lastStudied, xpEarned }
+      subjects: [], // Array of { id, title, category, progress, chapters: [], totalHours, streakCount, lastStreakDate, xpEarned, completedTopicsLog: {}, xpAwardedTopics: {}, moduleCompletionBonusAwarded: {}, chapterCompletionBonusAwarded: {} }
 
       // Memo System
       memos: [], // Array of { id, title, content, category, color, isPinned, priority, createdAt }
@@ -184,9 +210,14 @@ const useStore = create(
           progress: 0,
           chapters: [],
           totalHours: 0,
-          streak: 0,
+          streakCount: 0,
+          lastStreakDate: null,
           lastStudied: null,
           xpEarned: 0,
+          completedTopicsLog: {},
+          xpAwardedTopics: {},
+          moduleCompletionBonusAwarded: {},
+          chapterCompletionBonusAwarded: {},
           ...subject
         }]
       })),
@@ -312,6 +343,195 @@ const useStore = create(
         });
       },
 
+      /**
+       * Complete a topic with full XP progression logic.
+       * This is the primary action for Learning Hub topic completion.
+       * Returns an XP result object for UI feedback.
+       */
+      completeTopicWithXp: (subjectId, chapterId, topicId) => {
+        const state = get();
+        const subject = state.subjects.find(s => s.id === subjectId);
+        if (!subject) return null;
+
+        const chapter = subject.chapters.find(c => c.id === chapterId);
+        if (!chapter) return null;
+
+        const topic = chapter.topics.find(t => t.id === topicId);
+        if (!topic) return null;
+
+        // If already completed, just toggle (uncomplete) — no XP changes
+        if (topic.status === 'Completed') {
+          get().toggleTopicStatus(subjectId, chapterId, topicId);
+          return { action: 'uncompleted', xp: 0 };
+        }
+
+        // === STREAK LOGIC ===
+        const streakResult = calculateUpdatedStreak(
+          subject.streakCount || 0,
+          subject.lastStreakDate || null
+        );
+
+        // === XP CALCULATION ===
+        const xpResult = calculateTopicXp(
+          streakResult.newStreak,
+          topicId,
+          chapterId,
+          subject.completedTopicsLog || {},
+          subject.xpAwardedTopics || {}
+        );
+
+        // === UPDATE STATE ===
+        const today = format(new Date(), 'yyyy-MM-dd');
+
+        set((storeState) => {
+          const newSubjects = storeState.subjects.map((s) => {
+            if (s.id !== subjectId) return s;
+
+            // Update topic status to Completed
+            const updatedChapters = s.chapters.map((c) => {
+              if (c.id !== chapterId) return c;
+              
+              const updatedTopics = c.topics.map((t) => {
+                if (t.id !== topicId) return t;
+                return { ...t, status: 'Completed', completedAt: new Date().toISOString() };
+              });
+
+              // Recalculate chapter progress
+              const completedCount = updatedTopics.filter(t => t.status === 'Completed').length;
+              const progress = updatedTopics.length > 0 ? Math.round((completedCount / updatedTopics.length) * 100) : 0;
+              let status = 'Not Started';
+              if (progress === 100) status = 'Completed';
+              else if (progress > 0 || updatedTopics.some(t => t.status === 'In Progress')) status = 'In Progress';
+
+              return { ...c, topics: updatedTopics, progress, status };
+            });
+
+            // Update tracking maps
+            const newCompletedTopicsLog = { ...(s.completedTopicsLog || {}) };
+            const newXpAwardedTopics = { ...(s.xpAwardedTopics || {}) };
+
+            if (xpResult.eligible) {
+              newCompletedTopicsLog[chapterId] = (newCompletedTopicsLog[chapterId] || 0) + 1;
+              newXpAwardedTopics[topicId] = true;
+            }
+
+            // Recalculate subject progress
+            const totalChapters = updatedChapters.length;
+            const sumProgress = updatedChapters.reduce((acc, curr) => acc + (curr.progress || 0), 0);
+            const subjectProgress = totalChapters > 0 ? Math.round(sumProgress / totalChapters) : 0;
+
+            return {
+              ...s,
+              chapters: updatedChapters,
+              progress: subjectProgress,
+              streakCount: streakResult.newStreak,
+              lastStreakDate: today,
+              lastStudied: new Date().toISOString(),
+              xpEarned: (s.xpEarned || 0) + xpResult.xp,
+              completedTopicsLog: newCompletedTopicsLog,
+              xpAwardedTopics: newXpAwardedTopics,
+            };
+          });
+
+          return { subjects: newSubjects };
+        });
+
+        // Award global XP
+        if (xpResult.xp > 0) {
+          get().addXP(xpResult.xp);
+        }
+
+        // === CHECK MODULE COMPLETION BONUS ===
+        let moduleBonusXp = 0;
+        const updatedSubject = get().subjects.find(s => s.id === subjectId);
+        const updatedChapter = updatedSubject?.chapters.find(c => c.id === chapterId);
+
+        if (updatedChapter && isModuleComplete(updatedChapter.topics)) {
+          const alreadyAwarded = updatedSubject.moduleCompletionBonusAwarded?.[chapterId];
+          if (!alreadyAwarded) {
+            moduleBonusXp = calculateModuleBonus(streakResult.newStreak);
+            
+            set((storeState) => ({
+              subjects: storeState.subjects.map(s => {
+                if (s.id !== subjectId) return s;
+                return {
+                  ...s,
+                  xpEarned: (s.xpEarned || 0) + moduleBonusXp,
+                  moduleCompletionBonusAwarded: {
+                    ...(s.moduleCompletionBonusAwarded || {}),
+                    [chapterId]: true
+                  }
+                };
+              })
+            }));
+            get().addXP(moduleBonusXp);
+          }
+        }
+
+        // === CHECK CHAPTER (ALL MODULES) COMPLETION BONUS ===
+        let chapterBonusXp = 0;
+        const latestSubject = get().subjects.find(s => s.id === subjectId);
+        const allModulesComplete = latestSubject?.chapters?.length > 0 && 
+          latestSubject.chapters.every(c => isModuleComplete(c.topics));
+
+        if (allModulesComplete) {
+          const alreadyAwarded = latestSubject.chapterCompletionBonusAwarded?.['__subject__'];
+          if (!alreadyAwarded) {
+            chapterBonusXp = calculateChapterBonus(streakResult.newStreak);
+            
+            set((storeState) => ({
+              subjects: storeState.subjects.map(s => {
+                if (s.id !== subjectId) return s;
+                return {
+                  ...s,
+                  xpEarned: (s.xpEarned || 0) + chapterBonusXp,
+                  chapterCompletionBonusAwarded: {
+                    ...(s.chapterCompletionBonusAwarded || {}),
+                    ['__subject__']: true
+                  }
+                };
+              })
+            }));
+            get().addXP(chapterBonusXp);
+          }
+        }
+
+        return {
+          action: 'completed',
+          topicXp: xpResult.xp,
+          topicXpEligible: xpResult.eligible,
+          topicXpReason: xpResult.reason,
+          xpPerTopic: xpResult.xpPerTopic,
+          moduleBonusXp,
+          chapterBonusXp,
+          streakResult,
+          streakCount: streakResult.newStreak,
+        };
+      },
+
+      /**
+       * Get the current XP per topic for a subject based on its streak.
+       */
+      getSubjectXpPerTopic: (subjectId) => {
+        const subject = get().subjects.find(s => s.id === subjectId);
+        if (!subject) return 7;
+        return getXpPerTopic(subject.streakCount || 0);
+      },
+
+      /**
+       * Get streak info for a subject.
+       */
+      getSubjectStreakInfo: (subjectId) => {
+        const subject = get().subjects.find(s => s.id === subjectId);
+        if (!subject) return { streakCount: 0, tier: getStreakTier(0), xpPerTopic: 7 };
+        const streakCount = subject.streakCount || 0;
+        return {
+          streakCount,
+          tier: getStreakTier(streakCount),
+          xpPerTopic: getXpPerTopic(streakCount),
+        };
+      },
+
       addHabit: async (habit) => {
         try {
           const { apiFetch } = await import('@/lib/api');
@@ -320,11 +540,13 @@ const useStore = create(
             body: JSON.stringify({
               title: habit.name || habit.title,
               category: habit.category,
-              difficulty: habit.difficulty || 'Medium',
+              difficulty: habit.difficulty || 'Standard',
               goal: habit.goal || 0,
               color: habit.color,
               icon: habit.icon,
-              description: habit.description
+              description: habit.description,
+              isActive: habit.isActive !== false,
+              isArchived: habit.isArchived === true,
             })
           });
           if (res) {
@@ -415,7 +637,9 @@ const useStore = create(
               goal: updatedHabit.goal,
               color: updatedHabit.color,
               icon: updatedHabit.icon,
-              description: updatedHabit.description
+              description: updatedHabit.description,
+              isActive: updatedHabit.isActive,
+              isArchived: updatedHabit.isArchived,
             })
           });
           if (res) {
@@ -449,9 +673,11 @@ const useStore = create(
         const key = `${habitId}-${date}`;
         const habit = get().habits.find(h => h.id === habitId);
         if (!habit) return;
-        
-        const difficultyMultipliers = { Easy: 10, Medium: 25, Hard: 50, Elite: 100 };
-        const xpAmount = difficultyMultipliers[habit.difficulty || 'Medium'];
+
+        // Only award XP if backend says this habit is eligible
+        const isEligible = habit.isXpEligible !== false; // default true for backward-compat
+        const rawXp = getXpForDifficulty(habit.difficulty);
+        const xpAmount = isEligible ? rawXp : 0;
 
         const isCurrentlyCompleted = !!get().completions[key];
 
@@ -502,28 +728,42 @@ const useStore = create(
         get().autoCheckAchievements();
       },
 
-      addXP: (amount, date = format(new Date(), 'yyyy-MM-dd')) => set((state) => {
-        const newXP = Math.max(0, state.xp + amount);
-        const newLevel = Math.floor(newXP / 500) + 1;
-        
-        const existingDayIndex = state.xpHistory.findIndex(h => h.date === date);
-        let newHistory = [...state.xpHistory];
-        
-        if (existingDayIndex >= 0) {
-          newHistory[existingDayIndex] = { 
-            ...newHistory[existingDayIndex], 
-            amount: newHistory[existingDayIndex].amount + amount 
+      addXP: (amount, date = format(new Date(), 'yyyy-MM-dd')) => {
+        let newLevel = 1;
+        let oldLevel = 1;
+        set((state) => {
+          const newXP = Math.max(0, state.xp + amount);
+          newLevel = getLevelForXp(newXP);
+          oldLevel = state.level;
+          
+          const existingDayIndex = state.xpHistory.findIndex(h => h.date === date);
+          let newHistory = [...state.xpHistory];
+          
+          if (existingDayIndex >= 0) {
+            newHistory[existingDayIndex] = { 
+              ...newHistory[existingDayIndex], 
+              amount: newHistory[existingDayIndex].amount + amount 
+            };
+          } else {
+            newHistory.push({ date, amount });
+          }
+          
+          return { 
+            xp: newXP, 
+            level: newLevel,
+            xpHistory: newHistory
           };
-        } else {
-          newHistory.push({ date, amount });
+        });
+
+        if (newLevel > oldLevel) {
+          emitXpEvent({
+            type: 'level-up',
+            message: 'Level Up!',
+            subMessage: `Reached Level ${newLevel}`,
+            xp: 0
+          });
         }
-        
-        return { 
-          xp: newXP, 
-          level: newLevel,
-          xpHistory: newHistory
-        };
-      }),
+      },
 
       useShield: () => set((state) => ({
         streakShields: Math.max(0, state.streakShields - 1)
@@ -598,7 +838,7 @@ const useStore = create(
       }
     }),
     {
-      name: 'habitflow-v2-storage',
+      name: 'habitflow-v3-storage',
       onRehydrateStorage: (state) => {
         return (rehydratedState) => {
           if (rehydratedState) {

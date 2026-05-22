@@ -148,7 +148,7 @@ class HabitService {
     return updatedHabit ?? HabitModel(
       id: habitId,
       title: 'Syncing...',
-      difficulty: 'Easy',
+      difficulty: 'Standard',
       frequency: 'daily',
       goal: 1,
       color: 'blue',

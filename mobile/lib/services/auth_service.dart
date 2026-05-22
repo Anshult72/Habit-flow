@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -51,10 +52,50 @@ class AuthService {
 
   // ─── Google Auth ─────────────────────────────────────────────────────
 
-  Future<void> signInWithGoogle() async {
-    await _client.auth.signInWithOAuth(
-      supa.OAuthProvider.google,
-    );
+  /// Native Google Sign-In flow (Lightroom style).
+  /// No webview redirects, uses native account picker.
+  Future<supa.AuthResponse> signInWithGoogle() async {
+    try {
+      debugPrint('[AuthService] Initiating Native Google Sign-In...');
+
+      /// 1. Configure Google Sign-In
+      /// On Android, this uses the server client ID from the Google Cloud Console.
+      /// On iOS, the reverse client ID should be in Info.plist.
+      final googleSignIn = GoogleSignIn(
+        // On Android, provide the Web Client ID (from Google Console)
+        // On iOS, this is usually not required as it uses the URL Scheme.
+        // clientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', 
+        scopes: ['email', 'openid', 'profile'],
+      );
+
+      /// 2. Trigger Native Account Picker
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        throw const supa.AuthException('Google sign-in cancelled by user');
+      }
+
+      /// 3. Obtain ID Token & Access Token
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+
+      if (idToken == null) {
+        throw const supa.AuthException('Could not retrieve Google ID Token');
+      }
+
+      /// 4. Sign in to Supabase with the ID Token
+      final response = await _client.auth.signInWithIdToken(
+        provider: supa.OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+
+      debugPrint('[AuthService] Google Sign-In successful for: ${response.user?.email}');
+      return response;
+    } catch (e) {
+      debugPrint('[AuthService] Google Sign-In Error: $e');
+      rethrow;
+    }
   }
 
   // ─── Sign Out ────────────────────────────────────────────────────────

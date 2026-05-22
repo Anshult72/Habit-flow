@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../email/email.service';
 
 /**
  * AuthService — handles user synchronisation between Supabase Auth and our database.
@@ -11,7 +12,10 @@ import { UsersService } from '../users/users.service';
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly emailService: EmailService,
+  ) {}
 
   /**
    * Find-or-create a local DB user that matches the Supabase auth user.
@@ -37,11 +41,22 @@ export class AuthService {
 
     // 3. Create a brand-new user
     this.logger.log(`Creating new user for Supabase ID ${supabaseId}`);
-    return this.usersService.create({
+    const newUser = await this.usersService.create({
       supabaseId,
       email,
       name: metadata?.full_name ?? metadata?.name ?? null,
       avatarUrl: metadata?.avatar_url ?? null,
     });
+
+    // 4. Send Welcome Email
+    if (email) {
+      try {
+        await this.emailService.sendWelcome(email, newUser.name || '');
+      } catch (err) {
+        this.logger.error(`Failed to send welcome email to ${email}`, err);
+      }
+    }
+
+    return newUser;
   }
 }
