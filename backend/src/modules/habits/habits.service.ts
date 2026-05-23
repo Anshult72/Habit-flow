@@ -40,6 +40,10 @@ const LABEL_MIGRATION: Record<string, string> = {
  * Falls back to 'Standard' for any unknown value.
  */
 function normaliseComplexity(raw: string): string {
+  const canonical = ['Basic', 'Standard', 'Advanced', 'Elite'];
+  if (canonical.includes(raw)) {
+    return raw;
+  }
   return LABEL_MIGRATION[raw] ?? 'Standard';
 }
 
